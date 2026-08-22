@@ -2,7 +2,7 @@
 
 Phase 2 code is already in the repo: **crop photo diagnosis + text chat** (Gemini primary, Groq fallback).
 
-**Goal:** Send a leaf photo on WhatsApp → Hindi diagnosis in ~8–15 seconds. Ask text questions → useful advice.
+**Goal:** Send a leaf photo on Telegram → Hindi diagnosis in ~8–15 seconds. Ask text questions → useful advice.
 
 ---
 
@@ -10,10 +10,10 @@ Phase 2 code is already in the repo: **crop photo diagnosis + text chat** (Gemin
 
 You still need:
 
-1. Twilio WhatsApp Sandbox joined on your phone  
+1. Telegram bot chat open on your phone  
 2. FastAPI on port 8000  
-3. ngrok HTTPS tunnel → Twilio webhook  
-   `https://YOUR_NGROK_URL/webhooks/twilio/whatsapp`
+3. HTTPS tunnel → Telegram webhook registered  
+   `https://YOUR_TUNNEL_URL/webhooks/telegram`
 
 If those already work from Phase 1, continue.
 
@@ -57,7 +57,7 @@ GEMINI_API_KEY=paste_gemini_key_here
 GROQ_API_KEY=paste_groq_key_here
 ```
 
-Keep your existing Twilio + `APP_PUBLIC_URL` values.
+Keep your existing Telegram token + `APP_PUBLIC_URL` values.
 
 Save the file.
 
@@ -110,7 +110,7 @@ You want something like:
 {
   "status": "ok",
   "phase": 2,
-  "twilio_configured": true,
+  "telegram_configured": true,
   "gemini_configured": true,
   "groq_configured": true
 }
@@ -123,7 +123,7 @@ You want something like:
 
 ---
 
-## Step 6 — Confirm ngrok + Twilio webhook still point here
+## Step 6 — Confirm tunnel + Telegram webhook still point here
 
 ### You do
 
@@ -134,7 +134,7 @@ You want something like:
    (or whatever path worked for you)
 2. If the ngrok URL **changed**, update:
    - `.env` → `APP_PUBLIC_URL=https://….ngrok-free.app`
-   - Twilio Sandbox webhook → `https://….ngrok-free.app/webhooks/twilio/whatsapp`
+   - Re-register webhook → `https://….trycloudflare.com/webhooks/telegram`
 3. Restart uvicorn after changing `.env`
 
 ### Done when
@@ -143,7 +143,7 @@ You want something like:
 
 ---
 
-## Step 7 — Live WhatsApp tests (Phase 2 acceptance)
+## Step 7 — Live Telegram tests (Phase 2 acceptance)
 
 ### You do
 
@@ -167,7 +167,7 @@ Watch the uvicorn terminal for logs like `Gemini diagnosis ok` or `Groq diagnosi
 
 ---
 
-## Step 8 — Backup test without WhatsApp
+## Step 8 — Backup test without Telegram
 
 ### You do
 
@@ -176,7 +176,7 @@ Watch the uvicorn terminal for logs like `Gemini diagnosis ok` or `Groq diagnosi
 3. **Image mode:** paste a **public direct image URL** of a leaf (must be openly downloadable)  
 4. **Location mode:** demo weather query (voice not supported in Web Chat)
 
-Voice notes work on **WhatsApp only**, not in the browser backup.
+Voice notes work on **Telegram only**, not in the browser backup.
 
 ---
 
@@ -188,7 +188,7 @@ Voice notes work on **WhatsApp only**, not in the browser backup.
 | Photo never answered | Check ngrok still running; check server logs for download/AI errors |
 | `429` / rate limit | Wait a minute; ensure `GROQ_API_KEY` is set for fallback |
 | Web chat image fails | URL must be public HTTPS ending in a real image, not a Google Drive preview page |
-| Reply too slow | Normal up to ~15s on free tier; webhook uses background task so Twilio won’t time out as easily |
+| Reply too slow | Normal up to ~15s on free tier; webhook uses background task for heavy media |
 
 ---
 
@@ -196,13 +196,13 @@ Voice notes work on **WhatsApp only**, not in the browser backup.
 
 | Path | Role |
 | --- | --- |
-| `app/services/media.py` | Download Twilio / public media |
+| `app/services/media.py` | Download Telegram / public media |
 | `app/services/image_pipeline.py` | Pillow validate + resize |
 | `app/services/gemini_client.py` | Primary vision + chat |
 | `app/services/groq_client.py` | Fallback vision + chat |
 | `app/services/orchestrator.py` | Routes image/text to AI |
-| `app/services/reply_format.py` | Formats diagnosis JSON → WhatsApp Hindi |
-| `app/webhooks/twilio.py` | Background AI reply send |
+| `app/services/reply_format.py` | Formats diagnosis JSON → Telegram Hindi |
+| `app/webhooks/telegram.py` | Background AI reply send |
 | `app/webchat/routes.py` | Same AI via browser |
 
 ---

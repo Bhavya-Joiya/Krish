@@ -135,7 +135,7 @@ As a team member, I want to see recent farmer conversations and diagnoses so tha
 - Hackathon duration is 48–72 hours maximum
 - Team will strictly follow the Scope Lock
 - Free-tier rate limits are sufficient for a short demo
-- Twilio Sandbox participant limits are acceptable for the presentation
+- Telegram Sandbox limits are acceptable for the presentation
 - Internet connectivity will be available during the demo
 
 ---
@@ -145,7 +145,7 @@ As a team member, I want to see recent farmer conversations and diagnoses so tha
 | Risk | Mitigation |
 | --- | --- |
 | Free-tier rate limits hit during demo | Have Groq + local faster-whisper fallbacks ready; pre-warm services |
-| Twilio Sandbox limits | Prepare a simple Web Chat UI as backup demo channel |
+| Telegram rate limits | Prepare a simple Web Chat UI as backup demo channel |
 | Slow photo processing | Keep processing synchronous first; add background task only if needed |
 | Scope creep | Strict Scope Lock section — no new features after lock |
 | API key or service downtime | Multiple model fallbacks (Gemini ↔ Groq) and text-only fallback |

@@ -16,9 +16,9 @@ Tips:
 
 - Good daylight, leaf fills most of the frame
 - One plant problem per photo
-- Keep copies on your phone for WhatsApp live send
+- Keep copies on your phone for Telegram live send
 - Rehearse each photo once so you know the expected Hindi reply shape
 
-WhatsApp demo order: photo → voice → weather → mandi → admin.
+Telegram demo order: photo → voice → weather → mandi → admin.
 
-If WhatsApp fails, use `/chat` with **text** or **image URL** (no voice in the browser backup).
+If Telegram fails, use `/chat` with **text** or **image URL** (no voice in the browser backup).

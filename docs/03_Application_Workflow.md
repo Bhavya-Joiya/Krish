@@ -8,7 +8,7 @@ Hackathon MVP · August 2026
 ## 1. High-Level Architecture Flow
 
 ```
-Farmer (WhatsApp) → Twilio Webhook → FastAPI Backend → AI Processing → Reply → Farmer
+Farmer (Telegram) → Telegram Webhook → FastAPI Backend → AI Processing → Reply → Farmer
 ```
 
 Every message follows the same high-level path. The system then branches based on message type.
@@ -30,8 +30,8 @@ No app download or login is required.
 
 ### Step 2 — Message Reaches the Backend
 
-- Twilio (or Meta test number) sends an HTTP POST to the webhook endpoint.
-- FastAPI receives the request at `/webhooks/twilio/whatsapp` (or equivalent).
+- Telegram sends an HTTP POST update to the webhook endpoint.
+- FastAPI receives the request at `/webhooks/telegram`.
 - The payload contains message type, media URL (if any), sender phone number, and text body.
 
 ### Step 3 — Message Type Detection
@@ -47,7 +47,7 @@ The backend inspects the incoming payload and routes it:
 
 ### Step 4A — Crop Photo Diagnosis Flow
 
-1. Download the image from the Twilio/WhatsApp media URL.
+1. Download the image from the Telegram file API.
 2. Validate and resize the image using Pillow (reject non-images, limit size).
 3. Send the image to Google Gemini 2.0 Flash (Vision mode).
 4. Gemini returns: disease/pest name, short explanation, confidence, and recommended actions.
@@ -78,7 +78,7 @@ The backend inspects the incoming payload and routes it:
 
 - The final text reply is ready.
 - If the original message was a voice note (or farmer preference is voice), convert text → speech with edge-tts.
-- Send text message and/or voice note back via Twilio WhatsApp API.
+- Send text message and/or voice note back via Telegram Bot API.
 - Farmer receives the reply in the same WhatsApp chat.
 
 ### Step 6 — Logging and Admin Visibility
@@ -93,7 +93,7 @@ The backend inspects the incoming payload and routes it:
 
 | Component | Exact Role in the Flow |
 | --- | --- |
-| Twilio WhatsApp Sandbox | Entry and exit point for all farmer messages |
+| Telegram Bot API | Entry and exit point for all farmer messages |
 | FastAPI | Receives webhook, detects type, orchestrates entire pipeline |
 | Pillow | Validates and resizes crop photos |
 | Gemini 2.0 Flash | Vision diagnosis + text understanding + reply generation |
@@ -103,7 +103,7 @@ The backend inspects the incoming payload and routes it:
 | OpenWeather | Provides location-based weather data |
 | Supabase / SQLite | Stores farmers, conversations, and diagnoses |
 | Streamlit | Simple admin view of recent activity |
-| ngrok | Exposes local FastAPI to Twilio during development |
+| Cloudflare tunnel / ngrok | Exposes local FastAPI to Telegram during development |
 | Render / Railway | Hosts the live demo backend |
 
 ---
@@ -113,7 +113,7 @@ The backend inspects the incoming payload and routes it:
 ### Scenario: Farmer sends a diseased leaf photo
 
 1. Farmer opens WhatsApp and sends a clear photo of a yellow-spotted leaf.
-2. Twilio delivers the image to FastAPI webhook.
+2. Telegram delivers the image to the FastAPI webhook.
 3. FastAPI downloads the image, validates it with Pillow.
 4. Image is sent to Gemini 2.0 Flash Vision.
 5. Gemini responds: “यह Alternaria Leaf Spot (अर्ली ब्लाइट) है। पत्तियों पर भूरे धब्बे दिखाई दे रहे हैं। …”

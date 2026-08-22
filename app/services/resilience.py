@@ -26,17 +26,17 @@ def _prune_sids(now: float) -> None:
         _seen_sids.pop(k, None)
 
 
-def is_duplicate_message(message_sid: str | None) -> bool:
-    """Return True if this Twilio MessageSid was already processed recently."""
-    if not message_sid:
+def is_duplicate_message(message_id: str | None) -> bool:
+    """Return True if this message id was already processed recently."""
+    if not message_id:
         return False
     now = time.time()
     with _lock:
         _prune_sids(now)
-        if message_sid in _seen_sids:
-            logger.warning("Duplicate MessageSid ignored: %s", message_sid)
+        if message_id in _seen_sids:
+            logger.warning("Duplicate message id ignored: %s", message_id)
             return True
-        _seen_sids[message_sid] = now
+        _seen_sids[message_id] = now
         return False
 
 

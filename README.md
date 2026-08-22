@@ -1,8 +1,8 @@
 # Smart Crop Bot
 
-AI-powered WhatsApp agricultural advisor for Indian farmers (hackathon MVP).
+AI-powered Telegram agricultural advisor for Indian farmers (hackathon MVP).
 
-Farmers send a **photo**, **Hindi voice note**, or **text** — and get practical advice back inside WhatsApp. No app download.
+Farmers send a **photo**, **Hindi voice note**, or **text** — and get practical advice back inside Telegram. No app download.
 
 ## Docs
 
@@ -18,6 +18,7 @@ Farmers send a **photo**, **Hindi voice note**, or **text** — and get practica
 | [docs/PHASE3_YOUR_STEPS.md](docs/PHASE3_YOUR_STEPS.md) | Phase 3 setup |
 | [docs/PHASE4_YOUR_STEPS.md](docs/PHASE4_YOUR_STEPS.md) | Phase 4 setup |
 | [docs/PHASE5_YOUR_STEPS.md](docs/PHASE5_YOUR_STEPS.md) | **Phase 5 deploy + demo** |
+| [docs/PROACTIVE_LOOP_YOUR_STEPS.md](docs/PROACTIVE_LOOP_YOUR_STEPS.md) | **Proactive rain nudge loop** |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Live demo script |
 | [docs/PITCH.md](docs/PITCH.md) | Pitch paragraph |
 
@@ -28,7 +29,7 @@ Farmers send a **photo**, **Hindi voice note**, or **text** — and get practica
 - Voice in (Groq Whisper) + Hindi voice out (edge-tts)
 - Weather (OpenWeather) + demo mandi prices
 - SQLite logging + Streamlit admin
-- Web Chat backup at `/chat` (text, image URL, location — voice is WhatsApp only)
+- Web Chat backup at `/chat` (text, image URL, location — voice is Telegram only)
 - Deduped webhooks + light rate limit + `/demo/prewarm`
 
 ## Quick start
@@ -41,7 +42,7 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Fill `.env` (Twilio, Gemini, Groq, OpenWeather, `APP_PUBLIC_URL`).
+Fill `.env` (Telegram bot token, Gemini, Groq, OpenWeather, `APP_PUBLIC_URL`).
 
 ```bat
 .venv\Scripts\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000
@@ -53,13 +54,14 @@ Fill `.env` (Twilio, Gemini, Groq, OpenWeather, `APP_PUBLIC_URL`).
 - Prewarm: `.venv\Scripts\python.exe scripts\prewarm.py`  
 - Admin: `.venv\Scripts\streamlit.exe run admin\streamlit_app.py`  
 
-Twilio webhook: `POST /webhooks/twilio/whatsapp`
+Telegram webhook: `POST /webhooks/telegram`  
+Register webhook: `POST /webhooks/telegram/set-webhook` (after `APP_PUBLIC_URL` is set)
 
 ## Deploy (Phase 5)
 
 - **Render:** `render.yaml` or manual web service (see `docs/PHASE5_YOUR_STEPS.md`)
 - **Railway:** `railway.toml`
-- Set `APP_PUBLIC_URL` to the public HTTPS URL and point Twilio at `/webhooks/twilio/whatsapp`
+- Set `APP_PUBLIC_URL` to the public HTTPS URL and call `/webhooks/telegram/set-webhook`
 
 ## Demo order
 
@@ -68,4 +70,4 @@ Twilio webhook: `POST /webhooks/twilio/whatsapp`
 3. Location + weather  
 4. Mandi prices  
 5. Streamlit admin  
-6. Backup `/chat` if sandbox fails (text + image URL; voice WhatsApp-only)
+6. Backup `/chat` if Telegram fails (text + image URL; voice Telegram-only)

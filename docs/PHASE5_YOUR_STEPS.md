@@ -57,14 +57,14 @@ Follow [DEMO_SCRIPT.md](DEMO_SCRIPT.md) end-to-end:
 3. Location + weather  
 4. Mandi  
 5. Streamlit admin  
-6. Practice `/chat` backup (text + image URL; voice is WhatsApp-only)
+6. Practice `/chat` backup (text + image URL; voice is Telegram-only)
 
 Put photos in `demo/` (see `demo/README.md`).
 
 ### Done when
 
 - Full path works without a critical crash  
-- You know your backup line if Twilio fails  
+- You know your backup line if Telegram fails  
 
 ---
 
@@ -79,15 +79,15 @@ Put photos in `demo/` (see `demo/README.md`).
    - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`  
    - Or use `render.yaml`  
 3. In Render **Environment**, set the same secrets as `.env`:  
-   - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`  
+   - `TELEGRAM_BOT_TOKEN`
    - `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENWEATHER_API_KEY`  
    - `APP_PUBLIC_URL=https://YOUR-SERVICE.onrender.com`  
    - `DATABASE_PATH=/tmp/smart_crop_bot.db`  
    - `MEDIA_DIR=/tmp/scb_media`  
-4. After deploy, set Twilio Sandbox webhook to:  
-   `https://YOUR-SERVICE.onrender.com/webhooks/twilio/whatsapp`  
+4. After deploy, register the Telegram webhook:  
+   `POST https://YOUR-SERVICE.onrender.com/webhooks/telegram/set-webhook`  
 5. Hit `/health` and `scripts\prewarm.py --base https://YOUR-SERVICE.onrender.com`  
-6. Test photo + voice on WhatsApp against the cloud URL  
+6. Test photo + voice on Telegram against the cloud URL  
 
 **Note:** Free Render disks are ephemeral — fine for a demo; data resets on sleep/redeploy. Keep Streamlit admin local if needed:
 

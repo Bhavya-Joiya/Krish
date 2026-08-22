@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 WEATHER_UNAVAILABLE_HI = "मौसम की जानकारी अभी उपलब्ध नहीं है। थोड़ी देर बाद फिर पूछें।"
 ASK_LOCATION_HI = (
     "मौसम बताने के लिए आपकी लोकेशन चाहिए।\n"
-    "WhatsApp में 📎 → Location भेजें, फिर फिर से पूछें: आज मौसम कैसा है?"
+    "Telegram में 📎 → Location भेजें, फिर फिर से पूछें: आज मौसम कैसा है?"
 )
 
 

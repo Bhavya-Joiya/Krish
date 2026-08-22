@@ -28,29 +28,29 @@ Build the hackathon MVP in five sequential, doable phases. Each phase ends with 
 
 1. **Repo & project layout**
    - Python 3.13 + FastAPI + Uvicorn
-   - `.env` for secrets (Twilio, later Gemini/Groq/OpenWeather)
+   - `.env` for secrets (Telegram, Gemini/Groq/OpenWeather)
    - `requirements.txt` / `pyproject.toml`
    - Basic folder structure, e.g.:
      - `app/main.py`
-     - `app/webhooks/twilio.py`
+     - `app/webhooks/telegram.py`
      - `app/services/` (empty stubs)
      - `app/config.py`
 
-2. **Twilio WhatsApp Sandbox**
-   - Create Twilio account + WhatsApp Sandbox
+2. **Telegram Bot API**
+   - Create bot via @BotFather
    - Join sandbox from demo phone(s)
    - Confirm media (image/audio) is allowed
 
 3. **Webhook endpoint**
-   - `POST /webhooks/twilio/whatsapp`
+   - `POST /webhooks/telegram`
    - Parse: `From`, `Body`, `NumMedia`, `MediaUrl0`, `MediaContentType0`
    - Detect type: text / image / audio / location
-   - Reply with a hard-coded Hindi ack via Twilio (e.g. “संदेश मिल गया। जल्द जवाब भेजेंगे।”)
+   - Reply with a hard-coded Hindi ack via Telegram (e.g. “संदेश मिल गया। जल्द जवाब भेजेंगे।”)
 
 4. **Local tunnel**
    - Run FastAPI locally
    - Expose with ngrok
-   - Point Twilio webhook URL to ngrok → FastAPI
+   - Register Telegram webhook URL (tunnel or deploy) → FastAPI
 
 5. **Optional safety net**
    - Browser Web Chat at `/chat` for text, image URL, and demo location (no voice upload)
@@ -74,7 +74,7 @@ Build the hackathon MVP in five sequential, doable phases. Each phase ends with 
 ### Build
 
 1. **Media download & image pipeline**
-   - Download image from Twilio media URL (auth if required)
+   - Download image from Telegram file API
    - Validate/resize with Pillow (reject non-images, cap size)
    - Save temp file or bytes for vision call
 
@@ -91,7 +91,7 @@ Build the hackathon MVP in five sequential, doable phases. Each phase ends with 
 4. **Router / orchestrator**
    - Image → diagnosis flow
    - Text → chat flow
-   - Send formatted reply back through Twilio
+   - Send formatted reply back through Telegram
 
 5. **Fallback (basic)**
    - If Gemini fails → Groq Llama Vision / Chat
@@ -116,7 +116,7 @@ Live photo-diagnosis demo (the judge-facing core).
 ### Build
 
 1. **Speech-to-Text**
-   - Download audio from Twilio media URL
+   - Download audio from Telegram file API
    - Convert OGG/Opus → WAV if needed (ffmpeg)
    - Transcribe with Groq Whisper-large-v3 (Hindi/English)
    - Fallback: local faster-whisper
@@ -125,7 +125,7 @@ Live photo-diagnosis demo (the judge-facing core).
 2. **Text-to-Speech**
    - edge-tts with a natural Hindi voice
    - Generate audio file from bot reply text
-   - Upload/send as WhatsApp voice note via Twilio
+   - Upload/send as Telegram voice note via Bot API
    - If TTS fails → text-only (already works)
 
 3. **Reply policy**
@@ -202,11 +202,11 @@ Full MVP feature set per Scope Lock (minus deploy polish).
    - Pre-warm API clients before presentation
    - Prepare 3–5 good crop photos (known diseases) for live demo
    - Script the demo path: photo → voice note → weather → admin screen
-   - Keep Web Chat UI ready if Twilio Sandbox participant limit bites
+   - Keep Web Chat UI ready if Telegram is unavailable
 
 3. **Deploy**
    - Deploy FastAPI to Render or Railway free tier
-   - Update Twilio webhook to production URL
+   - Update Telegram webhook to production URL
    - Confirm media download + outbound messages work from cloud
    - Run Streamlit locally or as a second free service for admin
 
@@ -255,7 +255,7 @@ If time is short, **cut in this order** (keep Scope Lock):
 
 | Role | Owns |
 | --- | --- |
-| Backend / WhatsApp | Phase 1 webhook, Twilio send/receive, deploy |
+| Backend / Telegram | Phase 1 webhook, Telegram send/receive, deploy |
 | AI / Vision | Phase 2 Gemini prompts, diagnosis formatting, fallbacks |
 | Voice | Phase 3 Whisper + edge-tts + ffmpeg |
 | Data / Admin | Phase 4 SQLite/Supabase + Streamlit + weather/mandi |

@@ -1,1 +1,1 @@
-"""Twilio webhook package."""
+"""Telegram webhook package."""

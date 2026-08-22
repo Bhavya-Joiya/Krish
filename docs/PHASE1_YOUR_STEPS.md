@@ -3,7 +3,7 @@
 This guide is only the **manual actions on your machine / accounts**.  
 The Phase 1 code is already in the repo.
 
-**Goal of Phase 1:** Send a WhatsApp message → your FastAPI app receives it → bot replies in Hindi. No AI yet.
+**Goal of Phase 1:** Send a Telegram message → your FastAPI app receives it → bot replies in Hindi. No AI yet.
 
 ---
 
@@ -13,19 +13,16 @@ The Phase 1 code is already in the repo.
 
 1. Confirm **Python 3.11+** is installed (`python --version`).
 2. Install **Git** if you want version control later (optional for Phase 1).
-3. Create a free **Twilio** account: [https://www.twilio.com/try-twilio](https://www.twilio.com/try-twilio)
-4. Install **ngrok** (needed so Twilio can reach your laptop):
-   - Download: [https://ngrok.com/download](https://ngrok.com/download)
-   - Or: `winget install ngrok.ngrok`
-5. Sign up at [https://dashboard.ngrok.com](https://dashboard.ngrok.com), copy your **authtoken**, then run:
-   ```powershell
-   ngrok config add-authtoken YOUR_TOKEN_HERE
-   ```
+3. Install **Telegram** on your phone (or desktop).
+4. Install a public HTTPS tunnel (needed so Telegram can reach your laptop):
+   - **Cloudflare (recommended on Windows):** `npx --yes cloudflared tunnel --url http://127.0.0.1:8000`
+   - Or double-click `START_DEMO.bat` (starts API + tunnel)
+   - Or **ngrok:** [https://ngrok.com/download](https://ngrok.com/download)
 
 ### Done when
 
-- Twilio account exists  
-- `ngrok version` works in PowerShell  
+- Telegram app works on your phone  
+- Tunnel command runs without errors  
 - Python works  
 
 ---
@@ -64,7 +61,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
    copy .env.example .env
    ```
 2. Open `c:\Krishi\.env` in Cursor/Notepad.
-3. Leave Twilio fields empty for now if you have not opened the Console yet — you will fill them in Step 3.
+3. Leave `TELEGRAM_BOT_TOKEN` empty for now if you have not created the bot yet — you will fill it in Step 3.
 4. **Never commit** `.env` (already in `.gitignore`).
 
 ### Done when
@@ -73,35 +70,23 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ---
 
-## Step 3 — Twilio WhatsApp Sandbox credentials
+## Step 3 — Telegram Bot token
 
 ### You do
 
-1. Open [Twilio Console](https://console.twilio.com/).
-2. Copy **Account SID** and **Auth Token** (dashboard home).
-3. Paste into `.env`:
+1. Open Telegram and search for **@BotFather**.
+2. Send `/newbot` and follow the prompts (name + username ending in `bot`).
+3. Copy the **HTTP API token** BotFather gives you.
+4. Paste into `.env`:
    ```env
-   TWILIO_ACCOUNT_SID=ACxxxxxxxx
-   TWILIO_AUTH_TOKEN=your_token
+   TELEGRAM_BOT_TOKEN=123456789:ABCdef...
    ```
-4. Go to **Messaging → Try it out → Send a WhatsApp message**  
-   (or search “WhatsApp Sandbox”).
-5. Note the sandbox number (often `+1 415 523 8886`).
-6. Set in `.env`:
-   ```env
-   TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-   ```
-   (Use **your** sandbox number if different; keep the `whatsapp:` prefix.)
-7. On the Sandbox page, find the join code like:  
-   `join <two-words>`
-8. On **your phone WhatsApp**, send that exact message to the sandbox number.
-9. Wait for Twilio’s confirmation that you joined the sandbox.
-10. Keep this page open — you will paste the webhook URL in Step 6.
+5. Open a chat with your new bot and tap **Start** (or send `/start`).
 
 ### Done when
 
-- Sandbox shows your phone as a joined participant  
-- `.env` has SID, token, and `TWILIO_WHATSAPP_FROM`  
+- `.env` has `TELEGRAM_BOT_TOKEN`  
+- You can open a chat with your bot in Telegram  
 
 ---
 
@@ -119,7 +104,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Then open in browser:
 
-- [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health) → should show `"status":"ok"` and `"twilio_configured":true`
+- [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health) → should show `"status":"ok"` and `"telegram_configured":true`
 - [http://127.0.0.1:8000/chat](http://127.0.0.1:8000/chat) → Web Chat fallback (text, image URL, location — no voice)
 
 **Leave this terminal running.**
@@ -131,25 +116,25 @@ Then open in browser:
 
 ---
 
-## Step 5 — Expose localhost with ngrok
+## Step 5 — Expose localhost with a tunnel
 
 ### You do
 
 1. Open a **second** PowerShell window (do not stop uvicorn).
 2. Run:
    ```powershell
-   ngrok http 8000
+   npx --yes cloudflared tunnel --url http://127.0.0.1:8000
    ```
-3. Copy the **HTTPS** forwarding URL, e.g.  
-   `https://abc123.ngrok-free.app`
+   Or use ngrok: `ngrok http 8000`
+3. Copy the **HTTPS** URL, e.g.  
+   `https://abc123.trycloudflare.com`
 4. Put it in `.env`:
    ```env
-   APP_PUBLIC_URL=https://abc123.ngrok-free.app
+   APP_PUBLIC_URL=https://abc123.trycloudflare.com
    ```
-5. Restart uvicorn once after changing `.env` (Ctrl+C, then start again), **or** rely on `--reload` if it picks up env (safer to restart).
-6. Visit `https://YOUR_NGROK_URL/health` in the browser — should match local health.
+5. Restart uvicorn once after changing `.env` (Ctrl+C, then start again).
 
-> If ngrok shows a browser interstitial (“Visit Site”), click through once from your PC. Twilio POSTs usually still work; if webhooks fail, use an ngrok paid plan or the “skip browser warning” header docs.
+6. Visit `https://YOUR_TUNNEL_URL/health` in the browser — should match local health.
 
 ### Done when
 
@@ -157,48 +142,52 @@ Then open in browser:
 
 ---
 
-## Step 6 — Point Twilio webhook to your app
+## Step 6 — Register Telegram webhook
 
 ### You do
 
-1. Twilio Console → WhatsApp Sandbox settings.
-2. **When a message comes in** webhook URL:
-   ```text
-   https://YOUR_NGROK_URL/webhooks/twilio/whatsapp
+1. With uvicorn running and `APP_PUBLIC_URL` set, register the webhook:
+   ```powershell
+   curl -X POST https://YOUR_TUNNEL_URL/webhooks/telegram/set-webhook
    ```
-3. Method: **HTTP POST**
-4. Save.
-5. (Optional later) set `TWILIO_VALIDATE_SIGNATURE=true` in `.env` **after** `APP_PUBLIC_URL` is correct and matching the ngrok URL Twilio calls.
+   Or open in browser (use a REST client for POST) — the endpoint is `POST /webhooks/telegram/set-webhook`.
+2. Confirm response shows `"ok": true` and your webhook URL.
+
+Alternative: call Telegram directly:
+```text
+https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=https://YOUR_TUNNEL_URL/webhooks/telegram
+```
 
 ### Done when
 
-- Sandbox “comes in” URL ends with `/webhooks/twilio/whatsapp`  
+- Webhook URL ends with `/webhooks/telegram`  
+- [http://127.0.0.1:8000/webhooks/telegram/debug](http://127.0.0.1:8000/webhooks/telegram/debug) shows expected URL  
 
 ---
 
-## Step 7 — Live WhatsApp test (Phase 1 acceptance)
+## Step 7 — Live Telegram test (Phase 1 acceptance)
 
 ### You do
 
-From the phone that joined the sandbox, send these one by one and watch the **uvicorn terminal logs**:
+From Telegram, message your bot and watch the **uvicorn terminal logs**:
 
-| Send | Expect on WhatsApp | Expect in logs |
+| Send | Expect on Telegram | Expect in logs |
 | --- | --- | --- |
-| Text: `नमस्ते` | Hindi ack that message was received | `type=text` |
-| A crop leaf **photo** | Hindi ack that photo was received | `type=image` + `media_url=...` |
-| A short **voice note** | Hindi ack that voice was received | `type=audio` + `media_url=...` |
-| (Optional) **Location** pin | Hindi ack that location was received | `type=location` |
+| Text: `नमस्ते` | Hindi ack / reply | `type=text` |
+| A crop leaf **photo** | Hindi ack then diagnosis (Phase 2+) | `type=image` |
+| A short **voice note** | Hindi ack then reply (Phase 3+) | `type=audio` |
+| **Location** pin | Location saved ack (Phase 4+) | `type=location` |
 
 ### Done when (Phase 1 complete)
 
 - [ ] Text round-trip works  
-- [ ] Image media URL is logged  
-- [ ] Audio media URL is logged  
+- [ ] Image is received and logged  
+- [ ] Audio is received and logged  
 - [ ] Secrets are only in `.env`, not in code  
 
 ---
 
-## Step 8 — If WhatsApp Sandbox fails (backup)
+## Step 8 — If Telegram fails (backup)
 
 ### You do
 
@@ -206,9 +195,7 @@ From the phone that joined the sandbox, send these one by one and watch the **uv
 2. Choose **Text**, **Image** (public photo URL), or **Location** → Send  
 3. Confirm the bot reply appears in the chat panel  
 
-Voice notes are **not** supported in Web Chat (WhatsApp only). Use text for the backup demo path.
-
-Use this for demos if Twilio participant limits block you.
+Voice notes are **not** supported in Web Chat (Telegram only). Use text for the backup demo path.
 
 ---
 
@@ -216,11 +203,10 @@ Use this for demos if Twilio participant limits block you.
 
 | Problem | What you do |
 | --- | --- |
-| `twilio_configured: false` | Fill `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` in `.env`, restart uvicorn |
-| No reply on WhatsApp | Confirm you sent `join ...` to sandbox; check webhook URL; check ngrok still running |
-| Twilio error 21211 / invalid `From` | Fix `TWILIO_WHATSAPP_FROM=whatsapp:+1...` format |
-| 403 signature errors | Set `TWILIO_VALIDATE_SIGNATURE=false` for local demo |
-| ngrok URL changed | Update Twilio webhook **and** `APP_PUBLIC_URL`, restart |
+| `telegram_configured: false` | Fill `TELEGRAM_BOT_TOKEN` in `.env`, restart uvicorn |
+| No reply on Telegram | Check webhook via `/webhooks/telegram/debug`; re-run `set-webhook`; check tunnel still running |
+| Tunnel URL changed | Update `APP_PUBLIC_URL`, restart uvicorn, re-register webhook |
+| 403 webhook secret | Clear `TELEGRAM_WEBHOOK_SECRET` or match the secret in setWebhook |
 | Activate.ps1 blocked | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 
 ---
@@ -231,8 +217,8 @@ Use this for demos if Twilio participant limits block you.
 | --- | --- |
 | `app/main.py` | FastAPI app, `/health`, home page |
 | `app/config.py` | Loads `.env` |
-| `app/webhooks/twilio.py` | WhatsApp webhook + Hindi ack |
-| `app/services/messaging.py` | Sends WhatsApp replies via Twilio |
+| `app/webhooks/telegram.py` | Telegram webhook + Hindi replies |
+| `app/services/messaging.py` | Sends Telegram replies via Bot API |
 | `app/services/message_types.py` | Detects text / image / audio / location |
 | `app/webchat/` + `templates/chat.html` | Browser fallback chat |
 | `.env.example` | Template for your secrets |

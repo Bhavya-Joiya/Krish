@@ -16,11 +16,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Twilio
-    twilio_account_sid: str = ""
-    twilio_auth_token: str = ""
-    twilio_whatsapp_from: str = "whatsapp:+14155238886"
-    twilio_validate_signature: bool = False
+    # Telegram Bot API
+    telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
 
     # App
     app_env: str = "development"
@@ -48,6 +46,15 @@ class Settings(BaseSettings):
     openweather_api_key: str = ""
     database_path: str = str(PROJECT_ROOT / "data" / "smart_crop_bot.db")
 
+    # Proactive Agricultural Nudge Loop
+    proactive_enabled: bool = True
+    proactive_check_interval_minutes: int = 15
+    proactive_lookahead_hours: int = 24
+    proactive_rain_pop_threshold: float = 0.40
+    proactive_rain_mm_threshold: float = 1.0
+    proactive_nudge_cooldown_hours: int = 24
+    proactive_demo_mode: bool = False
+
     # Image / media limits
     max_image_bytes: int = 8_000_000
     max_image_dimension: int = 1280
@@ -55,14 +62,11 @@ class Settings(BaseSettings):
     media_dir: str = str(PROJECT_ROOT / "media")
 
     @property
-    def twilio_configured(self) -> bool:
-        sid = (self.twilio_account_sid or "").strip()
-        token = (self.twilio_auth_token or "").strip()
-        if not sid.startswith("AC") or len(sid) < 34:
+    def telegram_configured(self) -> bool:
+        token = (self.telegram_bot_token or "").strip()
+        if not token or token in {"your_telegram_bot_token", "changeme"}:
             return False
-        if "xxxx" in sid.lower() or token in {"", "your_auth_token_here"}:
-            return False
-        return True
+        return ":" in token and len(token) > 20
 
     @property
     def gemini_configured(self) -> bool:
@@ -82,6 +86,10 @@ class Settings(BaseSettings):
     @property
     def public_base_url(self) -> str:
         return (self.app_public_url or "").rstrip("/")
+
+    @property
+    def telegram_api_base(self) -> str:
+        return f"https://api.telegram.org/bot{(self.telegram_bot_token or '').strip()}"
 
 
 @lru_cache

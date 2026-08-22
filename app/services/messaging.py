@@ -1,93 +1,94 @@
-"""Outbound messaging via Twilio WhatsApp API."""
+"""Outbound messaging via Telegram Bot API."""
 
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
-from twilio.base.exceptions import TwilioRestException
-from twilio.rest import Client
+import httpx
 
 from app.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-
-def _client(settings: Settings | None = None) -> Client:
-    settings = settings or get_settings()
-    if not settings.twilio_configured:
-        raise RuntimeError(
-            "Twilio is not configured. Set TWILIO_ACCOUNT_SID and "
-            "TWILIO_AUTH_TOKEN in your .env file."
-        )
-    return Client(settings.twilio_account_sid, settings.twilio_auth_token)
+TELEGRAM_TEXT_LIMIT = 4096
 
 
-def _normalize_to(to: str) -> str:
-    if not to.startswith("whatsapp:"):
-        return f"whatsapp:{to}"
+def _normalize_chat_id(to: str) -> str:
+    if to.startswith("telegram:"):
+        return to.split(":", 1)[1]
     return to
 
 
-def send_whatsapp_text(
+def _truncate_text(text: str, limit: int = TELEGRAM_TEXT_LIMIT) -> str:
+    body = (text or "").strip()
+    if len(body) <= limit:
+        return body
+    return body[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
+def send_telegram_text(
     to: str,
     body: str,
     *,
     settings: Settings | None = None,
 ) -> str | None:
-    """Send a WhatsApp text message via Twilio. Returns message SID."""
+    """Send a Telegram text message. Returns Telegram message_id."""
     settings = settings or get_settings()
 
-    if not settings.twilio_configured:
-        logger.warning("Twilio not configured — skipping send to %s: %s", to, body)
+    if not settings.telegram_configured:
+        logger.warning("Telegram not configured — skipping send to %s: %s", to, body)
         return None
 
-    to = _normalize_to(to)
+    chat_id = _normalize_chat_id(to)
+    text = _truncate_text(body)
+    url = f"{settings.telegram_api_base}/sendMessage"
 
     try:
-        client = _client(settings)
-        message = client.messages.create(
-            from_=settings.twilio_whatsapp_from,
-            to=to,
-            body=body,
-        )
-        logger.info("Sent WhatsApp text sid=%s to=%s", message.sid, to)
-        return message.sid
-    except TwilioRestException as exc:
-        logger.error("Twilio text send failed: %s", exc)
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(url, json={"chat_id": chat_id, "text": text})
+            response.raise_for_status()
+            message_id = str(response.json()["result"]["message_id"])
+        logger.info("Sent Telegram text message_id=%s to=%s", message_id, chat_id)
+        return message_id
+    except httpx.HTTPError as exc:
+        logger.error("Telegram text send failed: %s", exc)
         raise
 
 
-def send_whatsapp_audio(
+def send_telegram_audio(
     to: str,
-    media_url: str,
+    audio_path: Path | str,
     *,
-    body: str | None = None,
+    caption: str | None = None,
     settings: Settings | None = None,
 ) -> str | None:
-    """
-    Send a WhatsApp audio/voice media message.
-    `media_url` must be publicly reachable by Twilio (ngrok /media/...).
-    """
+    """Send a Telegram audio file (uploads MP3 directly — no public URL needed)."""
     settings = settings or get_settings()
 
-    if not settings.twilio_configured:
-        logger.warning("Twilio not configured — skipping audio to %s", to)
+    if not settings.telegram_configured:
+        logger.warning("Telegram not configured — skipping audio to %s", to)
         return None
 
-    to = _normalize_to(to)
+    chat_id = _normalize_chat_id(to)
+    path = Path(audio_path)
+    url = f"{settings.telegram_api_base}/sendAudio"
+    data: dict[str, str] = {"chat_id": chat_id}
+    if caption:
+        data["caption"] = _truncate_text(caption, limit=1024)
 
     try:
-        client = _client(settings)
-        kwargs: dict = {
-            "from_": settings.twilio_whatsapp_from,
-            "to": to,
-            "media_url": [media_url],
-        }
-        if body:
-            kwargs["body"] = body
-        message = client.messages.create(**kwargs)
-        logger.info("Sent WhatsApp audio sid=%s to=%s url=%s", message.sid, to, media_url)
-        return message.sid
-    except TwilioRestException as exc:
-        logger.error("Twilio audio send failed: %s", exc)
+        with httpx.Client(timeout=60.0) as client:
+            with path.open("rb") as handle:
+                response = client.post(
+                    url,
+                    data=data,
+                    files={"audio": (path.name, handle, "audio/mpeg")},
+                )
+            response.raise_for_status()
+            message_id = str(response.json()["result"]["message_id"])
+        logger.info("Sent Telegram audio message_id=%s to=%s path=%s", message_id, chat_id, path.name)
+        return message_id
+    except httpx.HTTPError as exc:
+        logger.error("Telegram audio send failed: %s", exc)
         raise

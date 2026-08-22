@@ -2,7 +2,7 @@
 
 Phase 3 code is in the repo: **voice notes → text (Whisper)** and **Hindi voice replies (edge-tts)**.
 
-**Goal:** Send a Hindi voice note on WhatsApp → bot replies with text + Hindi audio. Photo diagnoses can also get a voice reply.
+**Goal:** Send a Hindi voice note on Telegram → bot replies with text + Hindi audio. Photo diagnoses can also get a voice reply.
 
 ---
 
@@ -10,13 +10,13 @@ Phase 3 code is in the repo: **voice notes → text (Whisper)** and **Hindi voic
 
 You still need:
 
-1. Twilio Sandbox joined  
+1. Telegram bot working  
 2. One uvicorn on port 8000  
-3. ngrok HTTPS URL in `.env` as `APP_PUBLIC_URL`  
-4. Twilio webhook → `https://YOUR_NGROK_URL/webhooks/twilio/whatsapp`  
+3. HTTPS URL in `.env` as `APP_PUBLIC_URL`  
+4. Telegram webhook → `https://YOUR_TUNNEL_URL/webhooks/telegram`  
 5. `GEMINI_API_KEY` + `GROQ_API_KEY` set  
 
-**Voice replies require a public URL.** Twilio must download `/media/….mp3` through ngrok. If `APP_PUBLIC_URL` is wrong, you still get **text**, but not voice.
+**Voice replies upload MP3 directly to Telegram** — no public media URL required for TTS.
 
 ---
 
@@ -61,7 +61,7 @@ TTS_ON_DIAGNOSIS=true
 TTS_VOICE=hi-IN-SwaraNeural
 ```
 
-If ngrok gave you a **new** URL, update Twilio webhook too.
+If the tunnel gave you a **new** URL, update `APP_PUBLIC_URL` and re-register the Telegram webhook.
 
 ### Done when
 
@@ -89,7 +89,7 @@ Expect something like:
 {
   "status": "ok",
   "phase": 3,
-  "twilio_configured": true,
+  "telegram_configured": true,
   "gemini_configured": true,
   "groq_configured": true,
   "tts_enabled": true,
@@ -121,7 +121,7 @@ Quick check in browser:
 
 ---
 
-## Step 5 — Live WhatsApp tests (Phase 3 acceptance)
+## Step 5 — Live Telegram tests (Phase 3 acceptance)
 
 | Test | Send | Expect |
 | --- | --- | --- |
@@ -130,7 +130,7 @@ Quick check in browser:
 | C | Normal **text** question | Text only (no voice) — expected |
 | D | Empty / noisy voice | Polite “speak again” Hindi message |
 
-Watch uvicorn logs for: `Groq Whisper ok`, `TTS saved`, `Sent WhatsApp audio`.
+Watch uvicorn logs for: `Groq Whisper ok`, `TTS saved`, `Sent Telegram audio`.
 
 ### Done when (Phase 3 complete)
 
@@ -161,8 +161,8 @@ Watch uvicorn logs for: `Groq Whisper ok`, `TTS saved`, `Sent WhatsApp audio`.
 | `app/services/tts.py` | edge-tts Hindi MP3 |
 | `app/services/audio_convert.py` | Bundled ffmpeg convert |
 | `app/services/orchestrator.py` | Audio → transcript → chat; TTS flags |
-| `app/services/messaging.py` | `send_whatsapp_audio` |
-| `media/` + `/media` mount | Public files for Twilio |
+| `app/services/messaging.py` | `send_telegram_audio` |
+| `media/` + `/media` mount | TTS file storage |
 
 ---
 

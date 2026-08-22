@@ -1,4 +1,4 @@
-"""Format AI diagnosis JSON into a short WhatsApp-friendly Hindi reply."""
+"""Format AI diagnosis JSON into a short Telegram-friendly Hindi reply."""
 
 from __future__ import annotations
 

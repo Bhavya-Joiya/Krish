@@ -1,4 +1,4 @@
-"""Download media from Twilio or public URLs."""
+"""Download media from Telegram or public URLs."""
 
 from __future__ import annotations
 
@@ -10,6 +10,33 @@ from app.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
+TELEGRAM_URL_PREFIX = "telegram:"
+
+
+async def download_telegram_file(
+    file_id: str,
+    *,
+    settings: Settings | None = None,
+    timeout: float = 45.0,
+) -> bytes:
+    """Download a file from Telegram using Bot API getFile."""
+    settings = settings or get_settings()
+    if not settings.telegram_configured:
+        raise RuntimeError("Telegram bot token required to download Telegram media")
+
+    base = settings.telegram_api_base
+    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
+        meta = await client.get(f"{base}/getFile", params={"file_id": file_id})
+        meta.raise_for_status()
+        file_path = meta.json()["result"]["file_path"]
+        response = await client.get(
+            f"https://api.telegram.org/file/bot{settings.telegram_bot_token.strip()}/{file_path}"
+        )
+        response.raise_for_status()
+        data = response.content
+        logger.info("Downloaded Telegram file_id=%s bytes=%s", file_id[:24], len(data))
+        return data
+
 
 async def download_media(
     url: str,
@@ -20,19 +47,17 @@ async def download_media(
     """
     Download bytes from a media URL.
 
-    Twilio media URLs require HTTP Basic auth (Account SID + Auth Token).
+    Telegram file ids use the `telegram:{file_id}` scheme.
     Public URLs (web chat demos) are fetched without auth.
     """
     settings = settings or get_settings()
-    auth: httpx.Auth | tuple[str, str] | None = None
 
-    if "api.twilio.com" in url or "twilio.com" in url:
-        if not settings.twilio_configured:
-            raise RuntimeError("Twilio credentials required to download WhatsApp media")
-        auth = (settings.twilio_account_sid, settings.twilio_auth_token)
+    if url.startswith(TELEGRAM_URL_PREFIX):
+        file_id = url[len(TELEGRAM_URL_PREFIX) :]
+        return await download_telegram_file(file_id, settings=settings, timeout=timeout)
 
     async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
-        response = await client.get(url, auth=auth)
+        response = await client.get(url)
         response.raise_for_status()
         data = response.content
         logger.info("Downloaded media url=%s bytes=%s", url[:80], len(data))

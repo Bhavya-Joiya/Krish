@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 WEBCHAT_NO_AUDIO_HI = (
     "वॉइस नोट Web Chat backup में उपलब्ध नहीं है। "
-    "कृपया सवाल टेक्स्ट में लिखें, या WhatsApp sandbox पर वॉइस भेजें।"
+    "कृपया सवाल टेक्स्ट में लिखें, या Telegram bot पर वॉइस भेजें।"
 )
 
 router = APIRouter(tags=["webchat"])

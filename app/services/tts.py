@@ -34,7 +34,7 @@ async def synthesize_hindi_mp3(
     if not cleaned:
         raise ValueError("empty text for TTS")
 
-    # Keep WhatsApp voice notes reasonably short
+    # Keep voice replies reasonably short
     if len(cleaned) > 600:
         cleaned = cleaned[:600].rsplit(" ", 1)[0] + "…"
 
@@ -46,11 +46,11 @@ async def synthesize_hindi_mp3(
 
 
 def public_media_url(filename: str, *, settings: Settings | None = None) -> str:
-    """Build a publicly reachable URL for Twilio to fetch (requires APP_PUBLIC_URL / ngrok)."""
+    """Build a publicly reachable URL for media (web chat / legacy use)."""
     settings = settings or get_settings()
     base = settings.public_base_url
     if not base:
         raise RuntimeError(
-            "APP_PUBLIC_URL is empty — set your ngrok HTTPS URL so Twilio can fetch voice media"
+            "APP_PUBLIC_URL is empty — set your public HTTPS URL for media access"
         )
     return f"{base}/media/{filename}"

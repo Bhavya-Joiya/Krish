@@ -15,9 +15,9 @@ class MessageType(str, Enum):
 
 
 class IncomingMessage(BaseModel):
-    """Normalized inbound message from WhatsApp or Web Chat."""
+    """Normalized inbound message from Telegram or Web Chat."""
 
-    from_number: str = Field(..., description="Sender id, e.g. whatsapp:+91...")
+    from_number: str = Field(..., description="Sender id, e.g. telegram:123456789")
     body: str = ""
     message_type: MessageType = MessageType.UNKNOWN
     media_url: str | None = None
@@ -44,7 +44,7 @@ def detect_message_type(
             return MessageType.IMAGE
         if ctype.startswith("audio/") or ctype in {"audio/ogg", "audio/opus"}:
             return MessageType.AUDIO
-        # Some WhatsApp voice notes arrive as application/ogg
+        # Some voice notes arrive as application/ogg
         if "ogg" in ctype or "opus" in ctype:
             return MessageType.AUDIO
 

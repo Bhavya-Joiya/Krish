@@ -14,13 +14,11 @@ services:
         value: "true"
       - key: TTS_ON_DIAGNOSIS
         value: "true"
-      - key: TWILIO_VALIDATE_SIGNATURE
-        value: "false"
       - key: DATABASE_PATH
         value: /tmp/smart_crop_bot.db
       - key: MEDIA_DIR
         value: /tmp/scb_media
       # Set these in the Render dashboard (do not commit secrets):
-      # TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM
+      # TELEGRAM_BOT_TOKEN
       # APP_PUBLIC_URL (https://your-service.onrender.com)
       # GEMINI_API_KEY, GROQ_API_KEY, OPENWEATHER_API_KEY

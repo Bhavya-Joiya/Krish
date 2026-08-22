@@ -13,7 +13,7 @@ timeout /t 4 /nobreak >nul
 echo [2/2] Starting Cloudflare tunnel (public HTTPS)...
 echo When the URL appears, copy it into:
 echo   1) .env  APP_PUBLIC_URL=https://....trycloudflare.com
-echo   2) Twilio Sandbox webhook = that URL + /webhooks/twilio/whatsapp
+echo   2) Register Telegram webhook: POST that URL + /webhooks/telegram/set-webhook
 echo   3) Restart the API window after changing .env
 echo.
 

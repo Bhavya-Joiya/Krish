@@ -11,7 +11,7 @@ Phase 4 code is in the repo: **weather**, **mandi demo prices**, **SQLite loggin
 You still need:
 
 1. One uvicorn on port **8000** running **latest code** (`"phase": 4` on `/health`)  
-2. ngrok + Twilio webhook  
+2. HTTPS tunnel + Telegram webhook  
 3. `GEMINI_API_KEY` + `GROQ_API_KEY`  
 
 If `/health` still shows phase 2/3, stop old uvicorn (Ctrl+C) and restart after Step 2.
@@ -104,7 +104,7 @@ Browser opens (usually http://localhost:8501).
 
 ---
 
-## Step 5 — WhatsApp acceptance tests
+## Step 5 — Telegram acceptance tests
 
 | Test | Send | Expect |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ Browser opens (usually http://localhost:8501).
 | --- | --- |
 | Weather says key not set | Add `OPENWEATHER_API_KEY`, restart uvicorn |
 | Weather unavailable right after signup | Wait for key activation; retry later |
-| Admin empty | Send a WhatsApp message first; click Refresh; confirm same DB path |
+| Admin empty | Send a Telegram message first; click Refresh; confirm same DB path |
 | Still `phase: 2` | Old server on 8000 — Ctrl+C all uvicoorns, start one Phase 4 process |
 | Mandi looks “fake” | Expected for MVP — hardcoded demo samples |
 

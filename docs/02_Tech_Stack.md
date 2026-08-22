@@ -11,7 +11,7 @@ This is the aggressive, zero-cost stack optimized for a **48–72 hour** hackath
 
 | Layer | Technology |
 | --- | --- |
-| Channel | Twilio WhatsApp Sandbox (or Web Chat UI fallback) |
+| Channel | Telegram Bot API (or Web Chat UI fallback) |
 | Backend | Python 3.13 + FastAPI (Celery optional only) |
 | AI / Vision | Google Gemini 2.0 Flash (primary) + Groq Llama Vision (fallback) |
 | Speech-to-Text | Groq Whisper-large-v3 (primary) + faster-whisper (local fallback) |
@@ -29,13 +29,13 @@ This is the aggressive, zero-cost stack optimized for a **48–72 hour** hackath
 
 ### 2.1 Channel Layer
 
-**Primary: Twilio WhatsApp Sandbox**
+**Primary: Telegram Bot API**
 
 - Free, instant signup, no Meta business verification required
 - Demo-ready in minutes
 - Supports text, images, audio
 
-**Fallback:** Browser Web Chat at `/chat` (text, image URL, demo location). Voice notes remain WhatsApp-only.
+**Fallback:** Browser Web Chat at `/chat` (text, image URL, demo location). Voice notes remain Telegram-only.
 
 **Deferred:** Meta WhatsApp Business Cloud API (requires verification — post-hackathon)
 
@@ -101,7 +101,7 @@ ISRO Bhuvan is explicitly cut for the hackathon.
 | Full Celery architecture | Over-engineering for demo — FastAPI BackgroundTasks sufficient |
 | RAG / pgvector | Not needed for core demo — hardcoded context is enough |
 | ISRO Bhuvan | Classic over-engineering — OpenWeather is enough |
-| Meta WhatsApp Cloud API | Business verification wait — Twilio Sandbox is instant |
+| Meta WhatsApp Cloud API | Business verification wait — Telegram Bot API is instant |
 | Next.js full admin | Too slow to build — Streamlit is dramatically faster |
 
 ---
@@ -110,7 +110,7 @@ ISRO Bhuvan is explicitly cut for the hackathon.
 
 **Total estimated cost for the demo period: $0**
 
-- Twilio WhatsApp Sandbox — Free
+- Telegram Bot API — Free
 - Google Gemini free tier — Free
 - Groq free tier — Free
 - edge-tts — Free (local)
