@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Env & secrets
+.env
+.env.local
+*.pem
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Runtime / media
+media/
+tmp/
+data/*.db
+data/*.db-*
+*.log
+.ngrok/
+*.mp3
+*.ogg
+*.wav
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/

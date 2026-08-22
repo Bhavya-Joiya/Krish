@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      --bg: #f3f6f2;
+      --panel: #ffffff;
+      --ink: #1a2e1a;
+      --muted: #5c6b5c;
+      --accent: #1f7a4c;
+      --accent-soft: #e5f3eb;
+      --bot: #e8f0e9;
+      --user: #1f7a4c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Noto Sans Devanagari", sans-serif;
+      background:
+        radial-gradient(ellipse at top left, #d9ecd9 0%, transparent 50%),
+        linear-gradient(160deg, var(--bg), #e8efe6 60%, #dfe8dc);
+      color: var(--ink);
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 2rem;
+    }
+    header h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      margin: 0 0 1rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #d5e0d5;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 420px;
+    }
+    #log {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      background: linear-gradient(#fafcfa, #f4f8f4);
+    }
+    .msg {
+      max-width: 85%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--bot);
+      border-bottom-left-radius: 4px;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--user);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .meta {
+      font-size: 0.7rem;
+      opacity: 0.75;
+      margin-bottom: 0.2rem;
+    }
+    form {
+      display: grid;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border-top: 1px solid #d5e0d5;
+      background: #fff;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      gap: 0.5rem;
+    }
+    select, input, button {
+      font: inherit;
+      padding: 0.55rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #c5d3c5;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      padding-inline: 1rem;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .hint { font-size: 0.8rem; color: var(--muted); }
+    @media (max-width: 560px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">Phase 5 · Demo-ready</span>
+    <header>
+      <h1>Smart Crop Bot</h1>
+      <p>Backup channel if WhatsApp sandbox fails. Supports text, crop photo URL, and demo location — not voice.</p>
+    </header>
+
+    <div class="panel">
+      <div id="log" aria-live="polite">
+        <div class="msg bot">
+          <div class="meta">bot</div>
+          नमस्ते! फसल का सवाल पूछें (Text), Image mode में public फोटो URL भेजें, या Location से मौसम आज़माएँ। वॉइस केवल WhatsApp पर।
+        </div>
+      </div>
+      <form id="chat-form">
+        <div class="row">
+          <select id="message_type" name="message_type" aria-label="Message type">
+            <option value="text">Text</option>
+            <option value="image">Image</option>
+            <option value="location">Location</option>
+          </select>
+          <input id="body" name="body" type="text" placeholder="अपना संदेश लिखें…" autocomplete="off" />
+          <button type="submit" id="send">Send</button>
+        </div>
+        <input id="media_url" type="url" placeholder="Image URL (Image mode only)" style="display:none" />
+        <div class="hint" id="hint">Text mode: ask about crops in Hindi or English.</div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const log = document.getElementById("log");
+    const form = document.getElementById("chat-form");
+    const bodyInput = document.getElementById("body");
+    const mediaInput = document.getElementById("media_url");
+    const typeSelect = document.getElementById("message_type");
+    const sendBtn = document.getElementById("send");
+    const hint = document.getElementById("hint");
+
+    function syncMode() {
+      const t = typeSelect.value;
+      mediaInput.style.display = t === "image" ? "block" : "none";
+      if (t === "image") {
+        hint.textContent = "Paste a direct public JPEG/PNG URL of a leaf/crop photo.";
+        bodyInput.placeholder = "वैकल्पिक कैप्शन…";
+      } else if (t === "location") {
+        hint.textContent = "Demo location (Delhi) is sent automatically. Ask: आज मौसम कैसा है?";
+        bodyInput.placeholder = "मौसम या फसल सवाल…";
+      } else {
+        hint.textContent = "Text mode: ask about crops in Hindi or English.";
+        bodyInput.placeholder = "अपना संदेश लिखें…";
+      }
+    }
+    typeSelect.addEventListener("change", syncMode);
+    syncMode();
+
+    function append(role, text, meta) {
+      const el = document.createElement("div");
+      el.className = "msg " + role;
+      el.innerHTML = `<div class="meta">${meta || role}</div>${escapeHtml(text)}`;
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return s
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message_type = typeSelect.value;
+      const body = bodyInput.value.trim() || (message_type === "image" ? "" : "(no text)");
+      const media_url = mediaInput.value.trim() || null;
+
+      if (message_type === "image" && !media_url) {
+        append("bot", "Image mode में public फोटो URL ज़रूरी है।", "bot · error");
+        return;
+      }
+
+      append(
+        "user",
+        message_type === "image" ? ((body || "[photo]") + "\n" + media_url) : body,
+        "you · " + message_type
+      );
+      bodyInput.value = "";
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch("/api/webchat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from_number: "web:+919999999999",
+            body,
+            message_type,
+            media_url: message_type === "image" ? media_url : null,
+            media_content_type: message_type === "image" ? "image/jpeg" : null,
+            latitude: message_type === "location" ? 28.6139 : null,
+            longitude: message_type === "location" ? 77.209 : null,
+          }),
+        });
+        const data = await res.json();
+        append("bot", data.reply, "bot · " + data.detected_type);
+      } catch (err) {
+        append("bot", "Error: " + err, "bot · error");
+      } finally {
+        sendBtn.disabled = false;
+        bodyInput.focus();
+      }
+    });
+  </script>
+</body>
+</html>
