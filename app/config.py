@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     # Telegram Bot API
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
+    # Optional @username without @ — used for t.me deep links (auto-fetched via getMe if empty)
+    telegram_bot_username: str = ""
 
     # App
     app_env: str = "development"

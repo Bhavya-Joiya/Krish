@@ -4,8 +4,10 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+import httpx
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -18,6 +20,64 @@ from app.webchat.routes import router as webchat_router
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+logger = logging.getLogger(__name__)
+
+_STUB_LANDING = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <title>Smart Crop Bot</title>
+      <style>
+        body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
+        a { color: #0b6e4f; }
+        code { background: #f0f0f0; padding: 0.15rem 0.35rem; border-radius: 4px; }
+      </style>
+    </head>
+    <body>
+      <h1>Smart Crop Bot</h1>
+      <p>Phase 5 — demo-ready Telegram crop advisor (photo, voice, weather, mandi).</p>
+      <p><small>Web Chat backup: text, image URL, location — not voice.</small></p>
+      <ul>
+        <li>Health: <a href="/health"><code>/health</code></a></li>
+        <li>Pre-warm before demo: <code>POST /demo/prewarm</code></li>
+        <li>Telegram webhook: <code>POST /webhooks/telegram</code></li>
+        <li>Register webhook: <code>POST /webhooks/telegram/set-webhook</code></li>
+        <li>Web Chat backup: <a href="/chat"><code>/chat</code></a></li>
+        <li>Landing channels API: <a href="/api/channels"><code>/api/channels</code></a></li>
+        <li>React landing: run <code>npm run build</code> in <code>frontend/</code>, or <code>npm run dev</code> on port 5173</li>
+      </ul>
+    </body>
+    </html>
+    """
+
+
+def _spa_index() -> Path | None:
+    index = FRONTEND_DIST / "index.html"
+    return index if index.is_file() else None
+
+
+def _cors_origins() -> list[str]:
+    origins = [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+    ]
+    public = get_settings().public_base_url
+    if public:
+        origins.append(public)
+    return origins
+
+
+def _media_directory() -> Path:
+    path = Path(get_settings().media_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+# Cached Telegram @username from getMe (without leading @)
+_telegram_username_cache: str | None = None
 
 
 def _configure_logging() -> None:
@@ -26,6 +86,31 @@ def _configure_logging() -> None:
         level=getattr(logging, settings.log_level.upper(), logging.INFO),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+
+
+def _resolve_telegram_username() -> str:
+    """Return bot username for t.me links (env override, then getMe cache)."""
+    global _telegram_username_cache
+    settings = get_settings()
+    configured = (settings.telegram_bot_username or "").strip().lstrip("@")
+    if configured:
+        return configured
+    if _telegram_username_cache:
+        return _telegram_username_cache
+    if not settings.telegram_configured:
+        return ""
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            response = client.get(f"{settings.telegram_api_base}/getMe")
+            data = response.json()
+        if data.get("ok") and isinstance(data.get("result"), dict):
+            username = (data["result"].get("username") or "").strip()
+            if username:
+                _telegram_username_cache = username
+                return username
+    except Exception:
+        logger.exception("Failed to resolve Telegram bot username via getMe")
+    return ""
 
 
 @asynccontextmanager
@@ -58,49 +143,59 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_settings = get_settings()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_origin_regex=(
+        r"https://.*\.(onrender\.com|vercel\.app)"
+        if _settings.app_env.lower() == "production"
+        else None
+    ),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(telegram_router)
 app.include_router(webchat_router)
 
 static_dir = BASE_DIR / "static"
 templates_dir = BASE_DIR / "templates"
-media_dir = PROJECT_ROOT / "media"
 static_dir.mkdir(exist_ok=True)
 templates_dir.mkdir(exist_ok=True)
-media_dir.mkdir(exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
+app.mount("/media", StaticFiles(directory=str(_media_directory())), name="media")
 templates = Jinja2Templates(directory=str(templates_dir))
+
+_frontend_assets = FRONTEND_DIST / "assets"
+if _frontend_assets.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_frontend_assets)), name="frontend_assets")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    return """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="utf-8" />
-      <title>Smart Crop Bot</title>
-      <style>
-        body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
-        a { color: #0b6e4f; }
-        code { background: #f0f0f0; padding: 0.15rem 0.35rem; border-radius: 4px; }
-      </style>
-    </head>
-    <body>
-      <h1>Smart Crop Bot</h1>
-      <p>Phase 5 — demo-ready Telegram crop advisor (photo, voice, weather, mandi).</p>
-      <p><small>Web Chat backup: text, image URL, location — not voice.</small></p>
-      <ul>
-        <li>Health: <a href="/health"><code>/health</code></a></li>
-        <li>Pre-warm before demo: <code>POST /demo/prewarm</code></li>
-        <li>Telegram webhook: <code>POST /webhooks/telegram</code></li>
-        <li>Register webhook: <code>POST /webhooks/telegram/set-webhook</code></li>
-        <li>Web Chat backup: <a href="/chat"><code>/chat</code></a></li>
-      </ul>
-    </body>
-    </html>
-    """
+    index = _spa_index()
+    if index is not None:
+        return FileResponse(index)
+    return HTMLResponse(_STUB_LANDING)
+
+
+@app.get("/favicon.svg")
+async def frontend_favicon():
+    path = FRONTEND_DIST / "favicon.svg"
+    if path.is_file():
+        return FileResponse(path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404)
+
+
+@app.get("/icons.svg")
+async def frontend_icons():
+    path = FRONTEND_DIST / "icons.svg"
+    if path.is_file():
+        return FileResponse(path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404)
 
 
 @app.get("/health")
@@ -128,6 +223,69 @@ async def health():
             "tts": "edge-tts→text-only",
             "weather": "openweather→polite Hindi error",
         },
+    }
+
+
+@app.get("/api/channels")
+async def api_channels():
+    """Channel cards for the React landing page (Telegram, Web Chat, SMS)."""
+    settings = get_settings()
+    username = _resolve_telegram_username()
+    telegram_ok = settings.telegram_configured and bool(username)
+    telegram_href = f"https://t.me/{username}" if username else None
+    handle = f"@{username}" if username else "@your_bot"
+
+    return {
+        "ok": True,
+        "backend": {
+            "telegram_configured": settings.telegram_configured,
+            "gemini_configured": settings.gemini_configured,
+            "groq_configured": settings.groq_configured,
+            "openweather_configured": settings.openweather_configured,
+            "public_url_set": bool(settings.public_base_url),
+        },
+        "channels": [
+            {
+                "id": "telegram",
+                "name": "Telegram Bot",
+                "icon": "telegram",
+                "status": "connected" if telegram_ok else "offline",
+                "meta1": f"Photo · voice · text · weather · mandi · {handle}",
+                "meta2": "Primary channel — open the bot in Telegram",
+                "href": telegram_href,
+                "actionLabel": "Open Telegram" if telegram_ok else "Bot offline",
+                "disabled": not telegram_ok,
+                "note": (
+                    None
+                    if telegram_ok
+                    else "Set TELEGRAM_BOT_TOKEN (and optionally TELEGRAM_BOT_USERNAME) in .env, then restart the API."
+                ),
+            },
+            {
+                "id": "fallback",
+                "name": "Fallback Web Chat",
+                "icon": "fallback",
+                "status": "connected",
+                "meta1": "Text + image URL + location — same AI pipeline",
+                "meta2": "Voice notes are Telegram-only",
+                "href": "/chat",
+                "actionLabel": "Open Web Chat",
+                "disabled": False,
+                "note": "Use this if Telegram is unreachable. Photo via public image URL; no voice upload.",
+            },
+            {
+                "id": "sms",
+                "name": "SMS",
+                "icon": "sms",
+                "status": "pending",
+                "meta1": "Text-only advisory — not wired yet",
+                "meta2": "Coming soon",
+                "href": None,
+                "actionLabel": "Coming soon",
+                "disabled": True,
+                "note": "SMS channel is planned but not built for this demo.",
+            },
+        ],
     }
 
 

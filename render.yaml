@@ -1,10 +1,9 @@
 services:
   - type: web
     name: smart-crop-bot
-    runtime: python
+    runtime: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: APP_ENV
         value: production
@@ -18,7 +17,10 @@ services:
         value: /tmp/smart_crop_bot.db
       - key: MEDIA_DIR
         value: /tmp/scb_media
+      - key: PROACTIVE_ENABLED
+        value: "true"
       # Set these in the Render dashboard (do not commit secrets):
       # TELEGRAM_BOT_TOKEN
+      # TELEGRAM_BOT_USERNAME
       # APP_PUBLIC_URL (https://your-service.onrender.com)
       # GEMINI_API_KEY, GROQ_API_KEY, OPENWEATHER_API_KEY

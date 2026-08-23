@@ -1,6 +1,20 @@
-# Krish — Your Farm's AI Advisor, Right in Chat
+<div align="center">
+
+<img src="docs/screenshots/readme-hero.png" alt="Krish — Your Farm's AI Advisor, Right in Chat" width="100%" />
+
+# Krish
+
+### Your Farm's AI Advisor, Right in Chat
 
 **OOSC 4.0 · Hackathon MVP · Team Krish**
+
+Photo · voice · Hindi advice in Telegram — then a rain caution *before* spray washes off.
+
+[![Telegram](https://img.shields.io/badge/Telegram-@assist__64564bot-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/assist_64564bot)
+[![Web Chat](https://img.shields.io/badge/Fallback-Web_Chat-0B6E4F?style=for-the-badge)](#deploy-render--vercel--0)
+[![Status](https://img.shields.io/badge/Status-Phase_5_demo--ready-F59E0B?style=for-the-badge)](#)
+
+</div>
 
 Indian farmers lose crops to diseases they cannot diagnose in time, and most agri apps never get used — they need a download, a login, and high digital literacy. **Krish** (Smart Crop Bot) puts an AI advisor where farmers already talk: **Telegram**. Send a leaf photo, a Hindi voice note, or a text. Get practical advice in seconds. No app download. No registration.
 
@@ -165,7 +179,7 @@ Free-tier capable for a hackathon weekend.
 | Data | SQLite (`data/smart_crop_bot.db`) |
 | Admin | Streamlit (`admin/streamlit_app.py`) |
 | Tunnel | Cloudflare (`cloudflared`) for Telegram webhooks |
-| Deploy | Render / Railway configs included |
+| Deploy | Render (API + bot + optional landing) · Vercel (pretty landing, optional) |
 
 ---
 
@@ -233,6 +247,95 @@ Pre-warm models before a live pitch:
 
 ---
 
+## Deploy (Render + Vercel) — $0
+
+**Required:** Render hosts FastAPI — Telegram webhook, `/chat`, `/health`, `/api`.  
+**Optional:** Vercel hosts the React landing and talks to Render via `VITE_API_BASE`.
+
+You can skip Vercel and use Render alone (`https://<name>.onrender.com` serves the landing too). Streamlit admin stays **local**.
+
+Do **not** commit `.env`.
+
+### 1. Push this repo to GitHub
+
+This step is done in git (`origin`). Do not push `frontend/node_modules` or `.env`.
+
+### 2. Create the Render Web Service
+
+1. Sign up at [https://dashboard.render.com](https://dashboard.render.com) with GitHub (no card needed for Free).
+2. **New → Blueprint** and select this repo (uses [`render.yaml`](render.yaml)), **or** **New → Web Service** → this repo.
+3. If creating the service manually:
+   - Runtime: **Docker**
+   - Instance: **Free**
+   - Dockerfile path: `./Dockerfile`
+   - Region: closest to India (Singapore / Frankfurt)
+4. Add environment variables:
+
+| Key | Value |
+| --- | --- |
+| `APP_ENV` | `production` |
+| `APP_PUBLIC_URL` | `https://YOUR-SERVICE.onrender.com` (set after the first deploy if needed, then **Manual Deploy**) |
+| `TELEGRAM_BOT_TOKEN` | from local `.env` |
+| `TELEGRAM_BOT_USERNAME` | `assist_64564bot` (optional) |
+| `GEMINI_API_KEY` | from local `.env` |
+| `GROQ_API_KEY` | from local `.env` |
+| `OPENWEATHER_API_KEY` | from local `.env` |
+| `DATABASE_PATH` | `/tmp/smart_crop_bot.db` |
+| `MEDIA_DIR` | `/tmp/scb_media` |
+| `TTS_ENABLED` | `true` |
+| `PROACTIVE_ENABLED` | `true` |
+
+5. Deploy. First build is ~5–8 minutes. Live link: `https://<name>.onrender.com`.
+
+### 3. Point Telegram at that URL
+
+After `APP_PUBLIC_URL` is set and the service is **Live**:
+
+```bat
+curl.exe -X POST https://YOUR-SERVICE.onrender.com/webhooks/telegram/set-webhook
+```
+
+Then check:
+
+- `https://YOUR-SERVICE.onrender.com/health` → `"telegram_configured": true`, `"public_url_set": true`
+- `https://YOUR-SERVICE.onrender.com/demo/checklist`
+- Open `/` — React landing; **Open Telegram** and **Open Web Chat** should work
+- Send a leaf photo to the bot
+
+Wake the app **1–2 minutes before a demo** (Free instances sleep after 15 minutes; cold start ~1 minute):
+
+```bat
+curl.exe -X POST https://YOUR-SERVICE.onrender.com/demo/prewarm
+```
+
+Optional: a free [UptimeRobot](https://uptimerobot.com) HTTP monitor on `/health` every 5 minutes. That keeps it warm but uses Render’s 750 free hours/month (about one always-on service). For a hackathon weekend, waking it before the pitch is enough.
+
+### Demo-day caveats
+
+- **SQLite on `/tmp` is wiped** on sleep or redeploy. Fine for a live demo; cloud admin history will not persist.
+- **Do not deploy Streamlit** on this URL. Run it locally if judges want the dashboard:
+
+```bat
+.venv\Scripts\python.exe -m streamlit run admin\streamlit_app.py --server.port 8501
+```
+
+- If the first Telegram message after sleep fails, hit `/health` and retry once.
+
+### 4. Optional — pretty landing on Vercel
+
+Do this **after** Render is Live so you have the API URL.
+
+1. Sign up at [https://vercel.com](https://vercel.com) with GitHub.
+2. **Add New → Project** → this repo.
+3. Set **Root Directory** to `frontend`.
+4. Add environment variable `VITE_API_BASE` = `https://YOUR-SERVICE.onrender.com` (no trailing slash).
+5. Deploy. Landing link: `https://<name>.vercel.app`.
+6. On Render, you do **not** need to change `APP_PUBLIC_URL` — that stays the Render URL (Telegram webhook). CORS already allows `*.vercel.app` in production.
+
+Web Chat still opens on Render (`/chat`). The Vercel page only needs `/api/channels`.
+
+---
+
 ## Judge demo (~90 seconds)
 
 1. Landing → **Open Telegram**.
@@ -263,8 +366,11 @@ app/                 FastAPI app, webhooks, webchat, services
   services/forecast.py    OpenWeather rain rule
   services/scheduler.py   APScheduler lifespan
   webhooks/telegram.py    Inbound Telegram
-admin/               Streamlit dashboard
+admin/               Streamlit dashboard (local only)
 frontend/            React landing + channel connector
+Dockerfile           Render image (Node build + Python)
+render.yaml          Free Docker web service
+frontend/vercel.json Optional Vercel landing (set VITE_API_BASE)
 scripts/             prewarm, seed advisory, test_proactive
 docs/                PRD, workflow, phase notes, screenshots
 ```
