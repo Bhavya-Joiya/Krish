@@ -16,8 +16,9 @@ from app.db import init_db
 from app.db_sa import init_sqlalchemy
 from app.services.prewarm import prewarm_services
 from app.services.scheduler import get_scheduler_status, start_scheduler, stop_scheduler
-from app.webhooks.telegram import router as telegram_router
+from app.api.whatsapp_router import router as whatsapp_router
 from app.webchat.routes import router as webchat_router
+from app.webhooks.telegram import router as telegram_router
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -91,6 +92,8 @@ def _media_directory() -> Path:
 
 # Cached Telegram @username from getMe (without leading @)
 _telegram_username_cache: str | None = None
+# Cached WhatsApp digits for wa.me (from env or Green-API getWaSettings)
+_whatsapp_number_cache: str | None = None
 
 
 def _configure_logging() -> None:
@@ -99,6 +102,9 @@ def _configure_logging() -> None:
         level=getattr(logging, settings.log_level.upper(), logging.INFO),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+    # Green-API puts the instance token in the URL path — keep httpx from logging it.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def _resolve_telegram_username() -> str:
@@ -123,6 +129,35 @@ def _resolve_telegram_username() -> str:
                 return username
     except Exception:
         logger.exception("Failed to resolve Telegram bot username via getMe")
+    return ""
+
+
+def _digits_only(value: str) -> str:
+    return "".join(ch for ch in value if ch.isdigit())
+
+
+def _resolve_whatsapp_number() -> str:
+    """Return WhatsApp digits for wa.me (env override, then getWaSettings cache)."""
+    global _whatsapp_number_cache
+    settings = get_settings()
+    configured = _digits_only(settings.green_api_whatsapp_number or "")
+    if configured:
+        return configured
+    if _whatsapp_number_cache:
+        return _whatsapp_number_cache
+    if not settings.green_api_configured:
+        return ""
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            response = client.get(settings.green_api_url("getWaSettings"))
+            data = response.json()
+        if isinstance(data, dict):
+            phone = _digits_only(str(data.get("phone") or data.get("wid") or ""))
+            if phone:
+                _whatsapp_number_cache = phone
+                return phone
+    except Exception:
+        logger.exception("Failed to resolve WhatsApp number via Green-API getWaSettings")
     return ""
 
 
@@ -174,6 +209,7 @@ app.add_middleware(
 
 app.include_router(telegram_router)
 app.include_router(webchat_router)
+app.include_router(whatsapp_router)
 
 static_dir = BASE_DIR / "static"
 templates_dir = BASE_DIR / "templates"
@@ -214,6 +250,7 @@ async def health():
         "groq_configured": settings.groq_configured,
         "openweather_configured": settings.openweather_configured,
         "data_gov_configured": settings.data_gov_configured,
+        "green_api_configured": settings.green_api_configured,
         "tts_enabled": settings.tts_enabled,
         "public_url_set": bool(settings.public_base_url),
         "env": settings.app_env,
@@ -227,23 +264,29 @@ async def health():
             "tts": "edge-tts→text-only",
             "weather": "openweather→polite Hindi error",
             "mandi": "agmarknet→24h cache",
+            "whatsapp": "green-api→kisan mitra",
         },
     }
 
 
 @app.get("/api/channels")
 async def api_channels():
-    """Channel cards for the React landing page (Telegram, Web Chat, SMS)."""
+    """Channel cards for the React landing page (Telegram, WhatsApp, Web Chat)."""
     settings = get_settings()
     username = _resolve_telegram_username()
     telegram_ok = settings.telegram_configured and bool(username)
     telegram_href = f"https://t.me/{username}" if username else None
     handle = f"@{username}" if username else "@your_bot"
 
+    wa_digits = _resolve_whatsapp_number()
+    whatsapp_ok = settings.green_api_configured
+    whatsapp_href = f"https://wa.me/{wa_digits}" if wa_digits else None
+
     return {
         "ok": True,
         "backend": {
             "telegram_configured": settings.telegram_configured,
+            "green_api_configured": settings.green_api_configured,
             "gemini_configured": settings.gemini_configured,
             "groq_configured": settings.groq_configured,
             "openweather_configured": settings.openweather_configured,
@@ -268,6 +311,29 @@ async def api_channels():
                 ),
             },
             {
+                "id": "whatsapp",
+                "name": "WhatsApp · Kisan Mitra",
+                "icon": "whatsapp",
+                "status": "connected" if whatsapp_ok else "offline",
+                "meta1": "Text · mandi bhav · kheti salah — Hindi / Hinglish",
+                "meta2": "Green-API WhatsApp bot for farmers",
+                "href": whatsapp_href,
+                "actionLabel": "Open WhatsApp" if whatsapp_ok and whatsapp_href else (
+                    "WhatsApp live" if whatsapp_ok else "Bot offline"
+                ),
+                "disabled": not (whatsapp_ok and bool(whatsapp_href)),
+                "note": (
+                    "Message this number — Kisan Mitra replies with mandi prices and farm advice."
+                    if whatsapp_ok and whatsapp_href
+                    else (
+                        "Green-API is configured, but the WhatsApp number is still syncing. "
+                        "Authorize the instance in the Green-API console, then refresh."
+                        if whatsapp_ok
+                        else "Set GREEN_API_HOST_URL, GREEN_API_INSTANCE_ID, and GREEN_API_TOKEN in .env, then restart."
+                    )
+                ),
+            },
+            {
                 "id": "fallback",
                 "name": "Fallback Web Chat",
                 "icon": "fallback",
@@ -277,19 +343,7 @@ async def api_channels():
                 "href": "/chat",
                 "actionLabel": "Open Web Chat",
                 "disabled": False,
-                "note": "Use this if Telegram is unreachable. Photo via public image URL; no voice upload.",
-            },
-            {
-                "id": "sms",
-                "name": "SMS",
-                "icon": "sms",
-                "status": "pending",
-                "meta1": "Text-only advisory — not wired yet",
-                "meta2": "Coming soon",
-                "href": None,
-                "actionLabel": "Coming soon",
-                "disabled": True,
-                "note": "SMS channel is planned but not built for this demo.",
+                "note": "Use this if Telegram or WhatsApp is unreachable. Photo via public image URL; no voice upload.",
             },
         ],
     }
@@ -313,6 +367,7 @@ async def demo_checklist():
         {"id": "public_url", "ok": bool(settings.public_base_url), "hint": "APP_PUBLIC_URL / tunnel / Render URL"},
         {"id": "weather", "ok": settings.openweather_configured, "hint": "OPENWEATHER_API_KEY"},
         {"id": "mandi", "ok": settings.data_gov_configured, "hint": "DATA_GOV_IN_API_KEY"},
+        {"id": "whatsapp", "ok": settings.green_api_configured, "hint": "GREEN_API_HOST_URL + INSTANCE_ID + TOKEN"},
         {"id": "tts", "ok": settings.tts_enabled, "hint": "TTS_ENABLED=true"},
         {
             "id": "proactive",
@@ -334,8 +389,9 @@ async def demo_checklist():
             "3. Location + आज मौसम कैसा है?",
             "4. टमाटर का मंडी भाव? (Agmarknet live / 24h cache)",
             "5. Streamlit admin refresh",
-            "6. Backup: /chat (text, image URL — no voice)",
-            "7. Proactive: seed OPEN advisory + run scripts/test_proactive.py",
+            "6. WhatsApp: text Kisan Mitra (mandi tool calling)",
+            "7. Backup: /chat (text, image URL — no voice)",
+            "8. Proactive: seed OPEN advisory + run scripts/test_proactive.py",
         ],
     }
 

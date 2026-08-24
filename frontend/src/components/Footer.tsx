@@ -46,7 +46,7 @@ export const Footer: React.FC = () => {
             <p className="text-gray-300 text-sm">
               Built for{' '}
               <span className="grad-text font-bold text-shimmer">Indian farmers</span>
-              {' '}— Telegram · Web Chat · SMS (soon)
+              {' '}— Telegram · WhatsApp · Web Chat
             </p>
             <p className="text-krish-monsoon text-xs mt-1 font-medium">Hindi · Hinglish · English support</p>
           </div>
@@ -70,7 +70,7 @@ export const Footer: React.FC = () => {
         {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-krish-clay/15 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-gray-500 text-xs">
-            Powered by Gemini · Groq · OpenWeather · Telegram Bot API
+            Powered by Gemini · Groq · OpenWeather · Telegram · Green-API
           </p>
           <p className="text-gray-500 text-xs font-medium flex items-center gap-1.5">
             Demo infra cost:

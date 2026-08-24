@@ -8,7 +8,7 @@ const benefits = [
   {
     icon: <Download size={20} strokeWidth={1.8} />,
     title: 'Zero new app to install',
-    desc: 'Works inside Telegram (and Web Chat backup) — no signup, no new app to learn.',
+    desc: 'Works inside Telegram, WhatsApp, and Web Chat — no signup, no new app to learn.',
     iconBg: 'bg-krish-neem/20 border-krish-neem/30 text-krish-wheat',
   },
   {

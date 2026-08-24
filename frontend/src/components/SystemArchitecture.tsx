@@ -88,9 +88,9 @@ export const SystemArchitecture: React.FC = () => {
               </div>
               <div className="overflow-x-auto pb-2">
                 <div className="flex items-center gap-1.5 min-w-max p-2">
-                  <Box label="Farmer" sub="Telegram / Voice / Photo" />
+                  <Box label="Farmer" sub="Telegram / WhatsApp / Photo" />
                   <Arrow />
-                  <Box label="Telegram Bot API" sub="Webhook" />
+                  <Box label="Channel Webhooks" sub="Telegram + Green-API" />
                   <Arrow />
                   <Box label="FastAPI Backend" sub="Python / Uvicorn" accent />
                   <Arrow />

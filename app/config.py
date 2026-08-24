@@ -54,6 +54,13 @@ class Settings(BaseSettings):
     data_gov_in_api_key: str = ""
     data_gov_in_resource_id: str = "9ef84268-d588-465a-a308-a864a43d0070"
 
+    # Green-API WhatsApp (Kisan Mitra)
+    green_api_host_url: str = ""
+    green_api_instance_id: str = ""
+    green_api_token: str = ""
+    # Optional digits for wa.me landing link (auto-fetched via getWaSettings if empty)
+    green_api_whatsapp_number: str = ""
+
     # Optional Celery broker (Redis). Render uses APScheduler if this is empty.
     celery_broker_url: str = "redis://localhost:6379/0"
 
@@ -98,6 +105,25 @@ class Settings(BaseSettings):
     def data_gov_configured(self) -> bool:
         key = (self.data_gov_in_api_key or "").strip()
         return bool(key) and key not in {"your_data_gov_in_api_key", "changeme"}
+
+    @property
+    def green_api_configured(self) -> bool:
+        host = (self.green_api_host_url or "").strip()
+        instance = (self.green_api_instance_id or "").strip()
+        token = (self.green_api_token or "").strip()
+        if not host or not instance or not token:
+            return False
+        if token in {"your_green_api_token", "changeme"}:
+            return False
+        return True
+
+    def green_api_url(self, method: str) -> str:
+        """Build `{host}/waInstance{id}/{method}/{token}`."""
+        host = (self.green_api_host_url or "").strip().rstrip("/")
+        instance = (self.green_api_instance_id or "").strip()
+        token = (self.green_api_token or "").strip()
+        verb = method.strip().strip("/")
+        return f"{host}/waInstance{instance}/{verb}/{token}"
 
     @property
     def public_base_url(self) -> str:

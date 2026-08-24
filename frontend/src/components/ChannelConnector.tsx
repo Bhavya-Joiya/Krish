@@ -8,6 +8,7 @@ import type { ChannelData } from '../types';
 
 const ChannelIcon: Record<string, React.ReactNode> = {
   telegram: <Send size={18} strokeWidth={2} />,
+  whatsapp: <Phone size={18} strokeWidth={2} />,
   fallback: <MessageSquare size={18} strokeWidth={2} />,
   sms:      <Phone size={18} strokeWidth={2} />,
 };

@@ -34,6 +34,18 @@ const FALLBACK_CHANNELS: ChannelData[] = [
     note: 'Backend not reachable. Run uvicorn on port 8000, then refresh.',
   },
   {
+    id: 'whatsapp',
+    name: 'WhatsApp · Kisan Mitra',
+    icon: 'whatsapp',
+    status: 'offline',
+    meta1: 'Text · mandi bhav · kheti salah',
+    meta2: 'Start the API to resolve the WhatsApp link',
+    href: null,
+    actionLabel: 'Bot offline',
+    disabled: true,
+    note: 'Backend not reachable. Run uvicorn on port 8000, then refresh.',
+  },
+  {
     id: 'fallback',
     name: 'Fallback Web Chat',
     icon: 'fallback',
@@ -44,18 +56,6 @@ const FALLBACK_CHANNELS: ChannelData[] = [
     actionLabel: 'Open Web Chat',
     disabled: false,
     note: 'Opens the FastAPI /chat backup (same origin, or Render when on Vercel).',
-  },
-  {
-    id: 'sms',
-    name: 'SMS',
-    icon: 'sms',
-    status: 'pending',
-    meta1: 'Text-only advisory — not wired yet',
-    meta2: 'Coming soon',
-    href: null,
-    actionLabel: 'Coming soon',
-    disabled: true,
-    note: 'SMS channel is planned but not built for this demo.',
   },
 ];
 
