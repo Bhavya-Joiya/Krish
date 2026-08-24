@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
 from app.db import init_db
+from app.db_sa import init_sqlalchemy
 from app.services.prewarm import prewarm_services
 from app.services.scheduler import get_scheduler_status, start_scheduler, stop_scheduler
 from app.webhooks.telegram import router as telegram_router
@@ -120,13 +121,15 @@ async def lifespan(_: FastAPI):
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
     Path(settings.database_path).parent.mkdir(parents=True, exist_ok=True)
     init_db()
+    init_sqlalchemy()
     logging.getLogger(__name__).info(
-        "Smart Crop Bot starting (env=%s, telegram=%s, gemini=%s, groq=%s, weather=%s, proactive=%s)",
+        "Smart Crop Bot starting (env=%s, telegram=%s, gemini=%s, groq=%s, weather=%s, mandi=%s, proactive=%s)",
         settings.app_env,
         settings.telegram_configured,
         settings.gemini_configured,
         settings.groq_configured,
         settings.openweather_configured,
+        settings.data_gov_configured,
         settings.proactive_enabled,
     )
     start_scheduler()
@@ -210,6 +213,7 @@ async def health():
         "gemini_configured": settings.gemini_configured,
         "groq_configured": settings.groq_configured,
         "openweather_configured": settings.openweather_configured,
+        "data_gov_configured": settings.data_gov_configured,
         "tts_enabled": settings.tts_enabled,
         "public_url_set": bool(settings.public_base_url),
         "env": settings.app_env,
@@ -222,6 +226,7 @@ async def health():
             "stt": "groq-whisper→faster-whisper(optional)",
             "tts": "edge-tts→text-only",
             "weather": "openweather→polite Hindi error",
+            "mandi": "agmarknet→24h cache",
         },
     }
 
@@ -242,6 +247,7 @@ async def api_channels():
             "gemini_configured": settings.gemini_configured,
             "groq_configured": settings.groq_configured,
             "openweather_configured": settings.openweather_configured,
+            "data_gov_configured": settings.data_gov_configured,
             "public_url_set": bool(settings.public_base_url),
         },
         "channels": [
@@ -306,6 +312,7 @@ async def demo_checklist():
         {"id": "groq", "ok": settings.groq_configured, "hint": "GROQ_API_KEY (STT+fallback)"},
         {"id": "public_url", "ok": bool(settings.public_base_url), "hint": "APP_PUBLIC_URL / tunnel / Render URL"},
         {"id": "weather", "ok": settings.openweather_configured, "hint": "OPENWEATHER_API_KEY"},
+        {"id": "mandi", "ok": settings.data_gov_configured, "hint": "DATA_GOV_IN_API_KEY"},
         {"id": "tts", "ok": settings.tts_enabled, "hint": "TTS_ENABLED=true"},
         {
             "id": "proactive",
@@ -325,7 +332,7 @@ async def demo_checklist():
             "1. Crop leaf photo → Hindi diagnosis",
             "2. Hindi voice note → transcript + advice (+ voice)",
             "3. Location + आज मौसम कैसा है?",
-            "4. टमाटर का मंडी भाव?",
+            "4. टमाटर का मंडी भाव? (Agmarknet live / 24h cache)",
             "5. Streamlit admin refresh",
             "6. Backup: /chat (text, image URL — no voice)",
             "7. Proactive: seed OPEN advisory + run scripts/test_proactive.py",

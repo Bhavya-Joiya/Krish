@@ -10,13 +10,17 @@ from app.services.gemini_client import gemini_chat, gemini_diagnose_image
 from app.services.groq_client import groq_chat, groq_diagnose_image
 from app.services.image_pipeline import ImageValidationError, prepare_image_jpeg
 from app.services.intent import Intent, detect_intent
-from app.services.mandi import format_mandi_reply
+from app.handlers.mandi_handler import handle_mandi_query
 from app.services.media import download_media
 from app.services.message_types import IncomingMessage, MessageType, ack_for
 from app.services.prompts import (
+    ASK_LOCATION_HI,
     FRIENDLY_ERROR_HI,
+    LOCATION_MISSING_FOOTER,
     LOCATION_SAVED_HI,
     NEED_CLEAR_PHOTO_HI,
+    START_WELCOME_HI,
+    START_WELCOME_READY_HI,
     STT_EMPTY_HI,
     STT_FAILED_HI,
 )
@@ -28,7 +32,7 @@ from app.services.repository import (
     upsert_farmer_location,
 )
 from app.services.stt import transcribe_audio
-from app.services.weather import ASK_LOCATION_HI, fetch_weather_hindi
+from app.services.weather import fetch_weather_hindi
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +44,50 @@ class BotReply:
     transcript: str | None = None
     is_diagnosis: bool = False
     meta: dict = field(default_factory=dict)
+    request_location: bool = False
+    remove_keyboard: bool = False
+
+
+_START_WORDS = {
+    "/start",
+    "/help",
+    "start",
+    "hi",
+    "hello",
+    "help",
+    "नमस्ते",
+    "नमस्कार",
+    "हेलो",
+}
+
+
+def _is_start_message(text: str) -> bool:
+    """True for /start, /help, and simple greetings."""
+    raw = (text or "").strip()
+    if not raw:
+        return False
+    token = raw.split()[0].split("@", 1)[0].lower()
+    if token in {"/start", "/help"}:
+        return True
+    return raw.lower() in _START_WORDS
+
+
+def _needs_location(phone: str) -> bool:
+    if not phone or phone == "unknown":
+        return True
+    return get_farmer_location(phone) is None
+
+
+def _with_location_ask(reply: BotReply, phone: str) -> BotReply:
+    """If this farmer has no saved GPS, append a pin request (does not block the answer)."""
+    if not _needs_location(phone):
+        return reply
+    if LOCATION_MISSING_FOOTER.strip() in reply.text:
+        reply.request_location = True
+        return reply
+    reply.text = reply.text.rstrip() + LOCATION_MISSING_FOOTER
+    reply.request_location = True
+    return reply
 
 
 async def _diagnose(jpeg: bytes, caption: str, settings: Settings) -> str:
@@ -106,31 +154,50 @@ async def _handle_textish(
     prefer_voice: bool,
     transcript: str | None = None,
 ) -> BotReply:
+    if _is_start_message(text):
+        if _needs_location(phone):
+            return BotReply(
+                f"{START_WELCOME_HI}\n\n{ASK_LOCATION_HI}",
+                send_voice=prefer_voice,
+                transcript=transcript,
+                request_location=True,
+            )
+        return BotReply(
+            START_WELCOME_READY_HI,
+            send_voice=prefer_voice,
+            transcript=transcript,
+        )
+
     intent = detect_intent(text)
     logger.info("Intent=%s for phone=%s text=%r", intent.value, phone, text[:80])
 
     if intent == Intent.WEATHER:
         loc = get_farmer_location(phone) if phone else None
         if not loc:
-            return BotReply(ASK_LOCATION_HI, send_voice=prefer_voice, transcript=transcript)
+            return BotReply(
+                ASK_LOCATION_HI,
+                send_voice=prefer_voice,
+                transcript=transcript,
+                request_location=True,
+            )
         reply = await fetch_weather_hindi(loc[0], loc[1], settings=settings)
         return BotReply(reply, send_voice=prefer_voice, transcript=transcript)
 
     if intent == Intent.MANDI:
-        return BotReply(
-            format_mandi_reply(text),
-            send_voice=prefer_voice,
-            transcript=transcript,
+        reply_text = await handle_mandi_query(phone, text)
+        return _with_location_ask(
+            BotReply(reply_text, send_voice=prefer_voice, transcript=transcript),
+            phone,
         )
 
     answer = await _general_chat(text, settings)
     if transcript:
-        return BotReply(
-            f"आपने कहा: {transcript}\n\n{answer}",
-            send_voice=prefer_voice,
-            transcript=transcript,
+        body = f"आपने कहा: {transcript}\n\n{answer}"
+        return _with_location_ask(
+            BotReply(body, send_voice=prefer_voice, transcript=transcript),
+            phone,
         )
-    return BotReply(answer, send_voice=False)
+    return _with_location_ask(BotReply(answer, send_voice=False), phone)
 
 
 def _safe_log_inbound(message: IncomingMessage, summary: str) -> None:
@@ -198,6 +265,7 @@ async def handle_incoming(
             send_voice=bool(settings.tts_enabled and settings.tts_on_diagnosis),
             is_diagnosis=True,
         )
+        reply = _with_location_ask(reply, phone)
         _safe_log_outbound(phone, "text", reply.text)
         return reply
 
@@ -258,7 +326,7 @@ async def handle_incoming(
             f"loc:{message.latitude},{message.longitude}",
         )
         if message.latitude is None or message.longitude is None:
-            reply = BotReply(ASK_LOCATION_HI)
+            reply = BotReply(ASK_LOCATION_HI, request_location=True)
             _safe_log_outbound(phone, "text", reply.text)
             return reply
         try:
@@ -268,7 +336,7 @@ async def handle_incoming(
             reply = BotReply(FRIENDLY_ERROR_HI)
             _safe_log_outbound(phone, "text", reply.text)
             return reply
-        reply = BotReply(LOCATION_SAVED_HI)
+        reply = BotReply(LOCATION_SAVED_HI, remove_keyboard=True)
         _safe_log_outbound(phone, "text", reply.text)
         return reply
 

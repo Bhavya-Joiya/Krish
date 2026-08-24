@@ -15,11 +15,13 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import get_settings
 from app.services.proactive import run_proactive_check
+from app.workers.tasks import refresh_mandi_prices_async
 
 logger = logging.getLogger(__name__)
 
 _scheduler: AsyncIOScheduler | None = None
 _JOB_ID = "proactive_rain_advisory_nudge"
+_MANDI_JOB_ID = "mandi_price_refresh"
 
 
 def scheduler_running() -> bool:
@@ -49,12 +51,11 @@ async def _scheduled_job() -> None:
 
 
 def start_scheduler() -> AsyncIOScheduler | None:
-    """Start the singleton AsyncIOScheduler if proactive is enabled."""
+    """Start the singleton AsyncIOScheduler (proactive + mandi cache refresh)."""
     global _scheduler
     settings = get_settings()
 
     # Under uvicorn --reload, only the worker child should start the scheduler.
-    # WatchFiles sets this in some setups; also guard with existing singleton.
     if os.environ.get("UVICORN_RELOAD_PARENT") == "1":
         return None
 
@@ -62,28 +63,39 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.info("[PROACTIVE] Scheduler already running — skip start")
         return _scheduler
 
-    if not settings.proactive_enabled:
-        logger.info("[PROACTIVE] Scheduler not started (PROACTIVE_ENABLED=false)")
-        return None
-
-    interval = max(1, int(settings.proactive_check_interval_minutes))
     scheduler = AsyncIOScheduler()
+
+    if settings.proactive_enabled:
+        interval = max(1, int(settings.proactive_check_interval_minutes))
+        scheduler.add_job(
+            _scheduled_job,
+            trigger="interval",
+            minutes=interval,
+            id=_JOB_ID,
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info(
+            "[PROACTIVE] Job registered (interval=%s minutes, job_id=%s)",
+            interval,
+            _JOB_ID,
+        )
+    else:
+        logger.info("[PROACTIVE] Job not registered (PROACTIVE_ENABLED=false)")
+
     scheduler.add_job(
-        _scheduled_job,
+        refresh_mandi_prices_async,
         trigger="interval",
-        minutes=interval,
-        id=_JOB_ID,
+        hours=6,
+        id=_MANDI_JOB_ID,
         replace_existing=True,
         max_instances=1,
         coalesce=True,
     )
     scheduler.start()
     _scheduler = scheduler
-    logger.info(
-        "[PROACTIVE] Scheduler started (interval=%s minutes, job_id=%s)",
-        interval,
-        _JOB_ID,
-    )
+    logger.info("[SCHEDULER] Started (mandi refresh every 6h, job_id=%s)", _MANDI_JOB_ID)
     return _scheduler
 
 

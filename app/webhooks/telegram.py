@@ -147,7 +147,13 @@ async def _process_and_reply(incoming: IncomingMessage) -> None:
 
     if settings.telegram_configured and incoming.from_number:
         try:
-            send_telegram_text(incoming.from_number, reply.text, settings=settings)
+            send_telegram_text(
+                incoming.from_number,
+                reply.text,
+                settings=settings,
+                request_location=reply.request_location,
+                remove_keyboard=reply.remove_keyboard,
+            )
             await _maybe_send_voice(incoming.from_number, reply)
         except Exception:
             logger.exception("Failed to send Telegram reply")
@@ -272,7 +278,12 @@ async def telegram_webhook(
         )
         return {"ok": True}
 
-    send_telegram_text(incoming.from_number, reply.text)
+    send_telegram_text(
+        incoming.from_number,
+        reply.text,
+        request_location=reply.request_location,
+        remove_keyboard=reply.remove_keyboard,
+    )
     if reply.send_voice:
         background_tasks.add_task(_maybe_send_voice, incoming.from_number, reply)
     return {"ok": True}

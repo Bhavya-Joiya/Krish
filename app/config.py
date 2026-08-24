@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     # Phase 4
     openweather_api_key: str = ""
     database_path: str = str(PROJECT_ROOT / "data" / "smart_crop_bot.db")
+    # Optional Postgres URL for mandi cache (else SQLite at DATABASE_PATH)
+    database_url: str = ""
+
+    # Agmarknet / data.gov.in daily mandi prices
+    data_gov_in_api_key: str = ""
+    data_gov_in_resource_id: str = "9ef84268-d588-465a-a308-a864a43d0070"
+
+    # Optional Celery broker (Redis). Render uses APScheduler if this is empty.
+    celery_broker_url: str = "redis://localhost:6379/0"
 
     # Proactive Agricultural Nudge Loop
     proactive_enabled: bool = True
@@ -84,6 +93,11 @@ class Settings(BaseSettings):
     def openweather_configured(self) -> bool:
         key = (self.openweather_api_key or "").strip()
         return bool(key) and key not in {"your_openweather_api_key", "changeme"}
+
+    @property
+    def data_gov_configured(self) -> bool:
+        key = (self.data_gov_in_api_key or "").strip()
+        return bool(key) and key not in {"your_data_gov_in_api_key", "changeme"}
 
     @property
     def public_base_url(self) -> str:

@@ -32,6 +32,8 @@ def send_telegram_text(
     body: str,
     *,
     settings: Settings | None = None,
+    request_location: bool = False,
+    remove_keyboard: bool = False,
 ) -> str | None:
     """Send a Telegram text message. Returns Telegram message_id."""
     settings = settings or get_settings()
@@ -43,10 +45,21 @@ def send_telegram_text(
     chat_id = _normalize_chat_id(to)
     text = _truncate_text(body)
     url = f"{settings.telegram_api_base}/sendMessage"
+    payload: dict[str, object] = {"chat_id": chat_id, "text": text}
+    if request_location:
+        payload["reply_markup"] = {
+            "keyboard": [
+                [{"text": "📍 खेत की लोकेशन भेजें", "request_location": True}]
+            ],
+            "resize_keyboard": True,
+            "one_time_keyboard": True,
+        }
+    elif remove_keyboard:
+        payload["reply_markup"] = {"remove_keyboard": True}
 
     try:
         with httpx.Client(timeout=30.0) as client:
-            response = client.post(url, json={"chat_id": chat_id, "text": text})
+            response = client.post(url, json=payload)
             response.raise_for_status()
             message_id = str(response.json()["result"]["message_id"])
         logger.info("Sent Telegram text message_id=%s to=%s", message_id, chat_id)

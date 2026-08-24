@@ -14,7 +14,7 @@ services:
       - key: TTS_ON_DIAGNOSIS
         value: "true"
       - key: DATABASE_PATH
-        value: /tmp/smart_crop_bot.db
+        value: /app/data/smart_crop_bot.db
       - key: MEDIA_DIR
         value: /tmp/scb_media
       - key: PROACTIVE_ENABLED
@@ -24,3 +24,5 @@ services:
       # TELEGRAM_BOT_USERNAME
       # APP_PUBLIC_URL (https://your-service.onrender.com)
       # GEMINI_API_KEY, GROQ_API_KEY, OPENWEATHER_API_KEY
+      # DATA_GOV_IN_API_KEY
+      # DATA_GOV_IN_RESOURCE_ID (default 9ef84268-d588-465a-a308-a864a43d0070)

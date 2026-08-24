@@ -11,10 +11,6 @@ from app.config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 WEATHER_UNAVAILABLE_HI = "मौसम की जानकारी अभी उपलब्ध नहीं है। थोड़ी देर बाद फिर पूछें।"
-ASK_LOCATION_HI = (
-    "मौसम बताने के लिए आपकी लोकेशन चाहिए।\n"
-    "Telegram में 📎 → Location भेजें, फिर फिर से पूछें: आज मौसम कैसा है?"
-)
 
 
 async def fetch_weather_hindi(

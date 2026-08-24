@@ -62,7 +62,7 @@ Krish is a **conversational agricultural advisor**, not satellite farm monitorin
 | **Voice out** | Hindi TTS (`edge-tts`) so low-literacy users can *listen* |
 | **Text chat** | Crop, weather, and mandi questions in Hindi or English |
 | **Weather** | Share location → OpenWeather-backed local advice |
-| **Mandi context** | Demo market-price replies for the hackathon |
+| **Mandi context** | Live Agmarknet prices (data.gov.in) + 24h cache |
 | **Proactive rain nudge** | If rain is likely in ~24h **and** the farmer has an OPEN advisory → unprompted Hindi caution (delay irrigation/spray) |
 | **Admin dashboard** | Streamlit: conversations, diagnoses, nudges, advisories |
 | **Web Chat backup** | Same AI if Telegram is down (text / public image URL / location — **no voice**) |
@@ -280,7 +280,9 @@ This step is done in git (`origin`). Do not push `frontend/node_modules` or `.en
 | `GEMINI_API_KEY` | from local `.env` |
 | `GROQ_API_KEY` | from local `.env` |
 | `OPENWEATHER_API_KEY` | from local `.env` |
-| `DATABASE_PATH` | `/tmp/smart_crop_bot.db` |
+| `DATA_GOV_IN_API_KEY` | from local `.env` |
+| `DATA_GOV_IN_RESOURCE_ID` | `9ef84268-d588-465a-a308-a864a43d0070` |
+| `DATABASE_PATH` | `/app/data/smart_crop_bot.db` |
 | `MEDIA_DIR` | `/tmp/scb_media` |
 | `TTS_ENABLED` | `true` |
 | `PROACTIVE_ENABLED` | `true` |
@@ -312,7 +314,7 @@ Optional: a free [UptimeRobot](https://uptimerobot.com) HTTP monitor on `/health
 
 ### Demo-day caveats
 
-- **SQLite on `/tmp` is wiped** on sleep or redeploy. Fine for a live demo; cloud admin history will not persist.
+- **Render Free wipes the disk on sleep** (not only `/tmp`). Locations are asked again on `/start` or whenever none is saved — tap **खेत की लोकेशन भेजें**. Cloud admin history still will not persist.
 - **Do not deploy Streamlit** on this URL. Run it locally if judges want the dashboard:
 
 ```bat
@@ -342,7 +344,7 @@ Web Chat still opens on Render (`/chat`). The Vercel page only needs `/api/chann
 2. Send a **diseased leaf / crop photo** → point at diagnosis + क्या करें (~8–15s).
 3. Send a **Hindi voice note** → show transcript + TTS.
 4. Share **location** → `आज मौसम कैसा है?`
-5. Ask mandi: `टमाटर का मंडी भाव?` (demo prices — say so).
+5. Ask mandi: `टमाटर का मंडी भाव?` (live Agmarknet; say so if cache footer appears).
 6. Admin → **Conversations**.
 7. Proof of proactive loop (do not wait 15 minutes):
 
@@ -390,6 +392,9 @@ See [`.env.example`](.env.example). Never commit `.env`.
 | `APP_PUBLIC_URL` | HTTPS tunnel / Render URL for webhook |
 | `GEMINI_API_KEY` / `GROQ_API_KEY` | Vision, chat, STT |
 | `OPENWEATHER_API_KEY` | Weather + proactive forecast |
+| `DATA_GOV_IN_API_KEY` | Agmarknet mandi prices (data.gov.in) |
+| `DATA_GOV_IN_RESOURCE_ID` | Daily prices resource (default already set) |
+| `DATABASE_URL` | Optional Postgres for mandi cache (else SQLite) |
 | `PROACTIVE_ENABLED` | Default `true` |
 | `PROACTIVE_DEMO_MODE` | Treat rain as true for staged demos |
 
@@ -397,7 +402,7 @@ See [`.env.example`](.env.example). Never commit `.env`.
 
 ## Scope lock (honesty for judges)
 
-- Mandi prices in the MVP are **demo / sample**, not a live national feed.
+- Mandi prices use **Agmarknet via data.gov.in**, with a 24-hour SQL cache if the API is down.
 - Proactive alerts today are **rain × open advisory**, not frost / pest / price crash (roadmap).
 - SMS send is **not wired**; the engine and Telegram delivery are.
 - Landing hero numbers (conversations / uptime) are **product-page metrics**, not a production SLA.
