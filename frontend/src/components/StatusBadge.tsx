@@ -9,7 +9,7 @@ interface StatusBadgeProps {
 const config: Record<StatusType, { dot: string; text: string; label: string }> = {
   connected: { dot: 'bg-emerald-400', text: 'text-emerald-400', label: 'Connected' },
   offline:   { dot: 'bg-gray-600',    text: 'text-gray-500',    label: 'Offline'   },
-  pending:   { dot: 'bg-amber-400',   text: 'text-amber-400',   label: 'Pending'   },
+  pending:   { dot: 'bg-krish-wheat', text: 'text-krish-wheat', label: 'Pending'   },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {

@@ -1,12 +1,17 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────── */
 @theme {
-  --color-page-bg:   #0A0E0A;
-  --color-emerald:   #34D399;
-  --color-amber-acc: #F5B94D;
-  --color-glass:     rgba(255,255,255,0.06);
+  --color-page-bg:       #140E0A;
+  --color-krish-soil:    #3B1F0E;
+  --color-krish-ochre:   #C8811A;
+  --color-krish-wheat:   #E8C56A;
+  --color-krish-neem:    #2D6A35;
+  --color-krish-monsoon: #3A4F5C;
+  --color-krish-clay:    #7C4A2D;
+
   --font-heading: 'Sora', system-ui, sans-serif;
+  --font-display: 'Libre Baskerville', Georgia, serif;
   --font-body:    'Inter', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 }
@@ -18,30 +23,169 @@
   body {
     background-color: #0A0E0A;
     font-family: 'Inter', system-ui, sans-serif;
-    color: #D1D5DB;
+    color: #E2E8F0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5 { font-family: 'Sora', system-ui, sans-serif; }
 }
 
-/* ─── Glass utility ──────────────────────────────────────────────────────── */
+/* ─── Digital Dawn Hero Background ───────────────────────────────────────── */
+@keyframes digitalDawnShift {
+  0% {
+    background-position: 50% 0%;
+  }
+  100% {
+    background-position: 50% 100%;
+  }
+}
+
+.digital-dawn-bg {
+  background:
+    radial-gradient(circle at 22% 28%, rgba(212, 165, 92, 0.22) 0%, transparent 60%),
+    linear-gradient(
+      to bottom,
+      #080C26 0%,     /* deep pre-dawn indigo */
+      #13173D 24%,    /* mid indigo */
+      #2B1B3C 44%,    /* dusky plum */
+      #5C2614 58%,    /* warm ember glow starting above fold */
+      #8D3C18 68%,    /* vibrant golden-amber dawn horizon */
+      #B4551E 76%,    /* peak warm horizon radiance */
+      #481E0C 86%,    /* fading ember into soil */
+      #0A0E0A 100%    /* near-black matching grass ground */
+    );
+  background-size: 100% 108%;
+  animation: digitalDawnShift 18s ease-in-out infinite alternate;
+}
+
+/* ─── Custom Cursor ──────────────────────────────────────────────────────── */
+.custom-cursor {
+  position: fixed;
+  top: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  background-color: #E8C56A;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 99999;
+  mix-blend-mode: difference;
+  transition: transform 0.15s ease, background-color 0.2s ease;
+}
+
+.custom-cursor--hover {
+  transform: scale(2.2);
+  background-color: #F5B94D;
+}
+
+.custom-cursor-aura {
+  position: fixed;
+  top: -20px;
+  left: -20px;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid rgba(232, 197, 106, 0.40);
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 99998;
+  transition: width 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+              height 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+              top 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+              left 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+              border-color 0.2s ease, 
+              background-color 0.25s ease;
+}
+
+.custom-cursor-aura--hover {
+  top: -30px;
+  left: -30px;
+  width: 60px;
+  height: 60px;
+  border-color: rgba(200, 129, 26, 0.75);
+  background-color: rgba(200, 129, 26, 0.10);
+  box-shadow: 0 0 20px rgba(200, 129, 26, 0.25);
+}
+
+@media (pointer: fine) {
+  html.has-custom-cursor,
+  html.has-custom-cursor * {
+    cursor: none !important;
+  }
+}
+
+/* ─── Subtle Film Grain ─────────────────────────────────────────────────── */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* ─── Glass & Farmland utilities ─────────────────────────────────────────── */
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-  }
-  .glass-em {
-    background: rgba(52, 211, 153, 0.09);
+    background: rgba(26, 18, 12, 0.55);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(52, 211, 153, 0.16);
+    border: 1px solid rgba(232, 197, 106, 0.14);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.35);
   }
-  .glow-em  { box-shadow: 0 0 24px rgba(52, 211, 153, 0.18), inset 0 1px 0 rgba(255,255,255,0.06); }
-  .glow-amb { box-shadow: 0 0 24px rgba(245, 185, 77, 0.18),  inset 0 1px 0 rgba(255,255,255,0.06); }
+
+  .glass-em {
+    background: rgba(200, 129, 26, 0.12);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(200, 129, 26, 0.28);
+    box-shadow: 0 0 30px rgba(200, 129, 26, 0.15);
+  }
+
+  .glow-em  { box-shadow: 0 0 28px rgba(200, 129, 26, 0.18), inset 0 1px 0 rgba(232,197,106,0.12); }
+  .glow-amb { box-shadow: 0 0 24px rgba(232, 197, 106, 0.18), inset 0 1px 0 rgba(255,255,255,0.06); }
+
+  .soil-stripes {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 18px,
+      rgba(124, 74, 45, 0.05) 18px,
+      rgba(124, 74, 45, 0.05) 19px
+    );
+  }
+}
+
+/* ─── Advanced Animations ───────────────────────────────────────────────── */
+@keyframes textShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #E8C56A 0%,
+    #FFF6DC 25%,
+    #C8811A 50%,
+    #FFF6DC 75%,
+    #E8C56A 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: textShimmer 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+.pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
 }
 
 /* ─── Splash ─────────────────────────────────────────────────────────────── */
@@ -49,7 +193,7 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #000;
+  background: #0D0905;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,29 +201,13 @@
   pointer-events: all;
 }
 
-/* ─── Scroll reveal (legacy, kept for non-FM sections) ───────────────────── */
-.section-animate {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.55s ease, transform 0.55s ease;
-}
-.section-animate.visible { opacity: 1; transform: none; }
-
-/* ─── Firefly ambient drift ─────────────────────────────────────────────── */
-@keyframes fireflyFloat {
-  0%, 100% { transform: translateY(0px)   scale(1);    opacity: 0.45; }
-  30%       { transform: translateY(-18px) scale(1.15); opacity: 0.75; }
-  65%       { transform: translateY(-30px) scale(0.88); opacity: 0.30; }
-  85%       { transform: translateY(-22px) scale(1.05); opacity: 0.55; }
-}
-
 /* ─── Misc ───────────────────────────────────────────────────────────────── */
 .font-heading { font-family: 'Sora', system-ui, sans-serif; }
+.font-display { font-family: 'Libre Baskerville', Georgia, serif; }
 .font-mono    { font-family: 'JetBrains Mono', monospace; }
 
-/* Gradient text helper */
 .grad-text {
-  background: linear-gradient(90deg, #34D399, #F5B94D);
+  background: linear-gradient(90deg, #C8811A, #E8C56A);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

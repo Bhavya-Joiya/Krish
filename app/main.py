@@ -59,6 +59,18 @@ def _spa_index() -> Path | None:
     return index if index.is_file() else None
 
 
+def _frontend_public_file(relative: str) -> Path | None:
+    """Return a file under frontend/dist, or None if missing / path escape."""
+    if not relative or ".." in relative.replace("\\", "/").split("/"):
+        return None
+    try:
+        dest = (FRONTEND_DIST / relative).resolve()
+        dest.relative_to(FRONTEND_DIST.resolve())
+    except (OSError, ValueError):
+        return None
+    return dest if dest.is_file() else None
+
+
 def _cors_origins() -> list[str]:
     origins = [
         "http://127.0.0.1:5173",
@@ -181,24 +193,12 @@ if _frontend_assets.is_dir():
 async def root():
     index = _spa_index()
     if index is not None:
-        return FileResponse(index)
+        return FileResponse(
+            index,
+            media_type="text/html",
+            headers={"Cache-Control": "no-cache"},
+        )
     return HTMLResponse(_STUB_LANDING)
-
-
-@app.get("/favicon.svg")
-async def frontend_favicon():
-    path = FRONTEND_DIST / "favicon.svg"
-    if path.is_file():
-        return FileResponse(path, media_type="image/svg+xml")
-    raise HTTPException(status_code=404)
-
-
-@app.get("/icons.svg")
-async def frontend_icons():
-    path = FRONTEND_DIST / "icons.svg"
-    if path.is_file():
-        return FileResponse(path, media_type="image/svg+xml")
-    raise HTTPException(status_code=404)
 
 
 @app.get("/health")
@@ -338,3 +338,12 @@ async def demo_checklist():
             "7. Proactive: seed OPEN advisory + run scripts/test_proactive.py",
         ],
     }
+
+
+@app.get("/{spa_file:path}")
+async def frontend_public_file(spa_file: str):
+    """Serve extra Vite public files (favicon, icons, …) from frontend/dist."""
+    path = _frontend_public_file(spa_file)
+    if path is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(path)

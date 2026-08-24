@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Send, MessageSquare, Phone, Globe, ChevronDown } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
+import { Magnetic } from './Magnetic';
+import { TiltCard } from './TiltCard';
 import type { ChannelData } from '../types';
-import { Send, Smartphone, Globe, ChevronDown } from 'lucide-react';
 
 const ChannelIcon: Record<string, React.ReactNode> = {
-  telegram: <Send size={20} strokeWidth={1.8} />,
-  sms: <Smartphone size={20} strokeWidth={1.8} />,
-  fallback: <Globe size={20} strokeWidth={1.8} />,
+  telegram: <Send size={18} strokeWidth={2} />,
+  fallback: <MessageSquare size={18} strokeWidth={2} />,
+  sms:      <Phone size={18} strokeWidth={2} />,
 };
-
-const floatY = [
-  [0, -4, 0, 4, 0],
-  [0, 3, 0, -3, 0],
-  [0, -3, 0, 3, 0],
-];
 
 interface ChannelConnectorProps {
   channels: ChannelData[];
@@ -23,11 +19,6 @@ interface ChannelConnectorProps {
 function openChannel(ch: ChannelData) {
   if (ch.disabled || !ch.href) return;
   const href = ch.href;
-  // External (Telegram) → new tab; same-origin Web Chat → same tab is fine, new tab OK too
-  if (href.startsWith('http')) {
-    window.open(href, '_blank', 'noopener,noreferrer');
-    return;
-  }
   window.open(href, '_blank', 'noopener,noreferrer');
 }
 
@@ -45,79 +36,88 @@ export const ChannelConnector: React.FC<ChannelConnectorProps> = ({ channels }) 
         return (
           <motion.div
             key={ch.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.5, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] }}
-            whileHover={{ y: 0, scale: 1.015, transition: { duration: 0.25 } }}
-            className="glass rounded-2xl overflow-hidden"
+            transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
           >
-            <motion.div
-              animate={{ y: floatY[i % floatY.length] }}
-              transition={{ duration: 7 + i * 1.3, repeat: Infinity, ease: 'easeInOut', delay: i * 1.8 }}
-              whileHover={{ y: 0 }}
+            <TiltCard
+              maxTilt={4}
+              glow
+              className="glass rounded-2xl overflow-hidden border border-krish-ochre/15 hover:border-krish-ochre/35 transition-colors"
             >
-              <div className="flex items-center gap-3 p-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
-                  {ChannelIcon[ch.icon] ?? <Globe size={20} />}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-white text-sm" style={{ fontFamily: 'Sora, sans-serif' }}>
-                      {ch.name}
-                    </span>
-                    <StatusBadge status={ch.status} />
-                  </div>
-                  <p className="text-gray-400 text-xs mt-0.5 truncate">{ch.meta1}</p>
-                  <p className="text-gray-500 text-[10px]">{ch.meta2}</p>
-                </div>
-
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                  <motion.button
-                    type="button"
-                    whileHover={canAct ? { scale: 1.06 } : undefined}
-                    whileTap={canAct ? { scale: 0.97 } : undefined}
-                    disabled={!canAct}
-                    onClick={() => openChannel(ch)}
-                    className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all ${
-                      !canAct
-                        ? 'bg-white/6 text-gray-500 border border-white/10 cursor-not-allowed'
-                        : isConnected
-                          ? 'bg-emerald-500/12 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20 cursor-pointer'
-                          : 'bg-gradient-to-r from-emerald-500 to-amber-400 text-black hover:shadow-[0_0_16px_rgba(52,211,153,0.35)] cursor-pointer'
-                    }`}
+              <div>
+                <div className="flex items-center gap-3 p-4">
+                  {/* Channel icon */}
+                  <motion.div
+                    whileHover={{ scale: 1.12, rotate: 5 }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 15 }}
+                    className="w-10 h-10 rounded-xl bg-krish-ochre/15 border border-krish-ochre/25 text-krish-wheat flex items-center justify-center flex-shrink-0 shadow"
                   >
-                    {label}
-                  </motion.button>
-                  {ch.note && (
-                    <button
-                      type="button"
-                      onClick={() => setExpanded(isOpen ? null : ch.id)}
-                      className="text-[10px] text-gray-600 hover:text-emerald-400 flex items-center gap-0.5 transition-colors cursor-pointer"
-                    >
-                      Details
-                      <ChevronDown
-                        size={12}
-                        className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                  )}
-                </div>
-              </div>
+                    {ChannelIcon[ch.icon] ?? <Globe size={18} />}
+                  </motion.div>
 
-              {ch.note && (
-                <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="mx-4 mb-4 rounded-xl p-3 bg-emerald-500/6 border border-emerald-500/20">
-                    <p className="text-xs text-emerald-200/80 leading-relaxed">{ch.note}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-white text-sm" style={{ fontFamily: 'var(--font-heading)' }}>
+                        {ch.name}
+                      </span>
+                      <StatusBadge status={ch.status} />
+                    </div>
+                    <p className="text-gray-400 text-xs mt-0.5 truncate">{ch.meta1}</p>
+                    <p className="text-krish-monsoon text-[10px] font-medium">{ch.meta2}</p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <Magnetic strength={canAct ? 0.25 : 0}>
+                      <motion.button
+                        type="button"
+                        whileHover={canAct ? { scale: 1.05 } : undefined}
+                        whileTap={canAct ? { scale: 0.95 } : undefined}
+                        disabled={!canAct}
+                        onClick={() => openChannel(ch)}
+                        className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all shadow-md ${
+                          !canAct
+                            ? 'bg-krish-soil/20 text-gray-600 border border-krish-clay/10 cursor-not-allowed'
+                            : isConnected
+                              ? 'bg-krish-neem/20 text-krish-wheat border border-krish-neem/40 hover:bg-krish-neem/35 hover:shadow-[0_0_16px_rgba(45,106,53,0.3)] cursor-pointer'
+                              : 'bg-gradient-to-r from-krish-ochre to-krish-wheat text-[#0D0A07] hover:shadow-[0_0_18px_rgba(200,129,26,0.4)] cursor-pointer font-bold'
+                        }`}
+                      >
+                        {label}
+                      </motion.button>
+                    </Magnetic>
+
+                    {ch.note && (
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : ch.id)}
+                        className="text-[10px] text-gray-400 hover:text-krish-wheat flex items-center gap-0.5 transition-colors cursor-pointer"
+                      >
+                        Details
+                        <ChevronDown
+                          size={12}
+                          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-            </motion.div>
+
+                {ch.note && (
+                  <motion.div
+                    initial={false}
+                    animate={isOpen ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mx-4 mb-4 rounded-xl p-3 bg-krish-soil/30 border border-krish-clay/25">
+                      <p className="text-xs text-krish-wheat/90 leading-relaxed">{ch.note}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </TiltCard>
           </motion.div>
         );
       })}

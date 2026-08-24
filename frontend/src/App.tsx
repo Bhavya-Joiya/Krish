@@ -1,29 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './index.css';
 import { motion } from 'framer-motion';
 import { SplashScreen } from './components/SplashScreen';
 import { Hero } from './components/Hero';
 import { WhyKrish } from './components/WhyKrish';
-import { StatStrip } from './components/StatStrip';
 import { FeatureCards } from './components/FeatureCards';
 import { SystemArchitecture } from './components/SystemArchitecture';
-
+import { CustomCursor } from './components/CustomCursor';
+import { GrainOverlay } from './components/GrainOverlay';
 import { Footer } from './components/Footer';
 import { GrassScene } from './components/GrassScene';
-import type { StatCardData, ChannelData } from './types';
+import type { ChannelData } from './types';
 import { apiUrl, resolveHref } from './api';
 
-const STATS: StatCardData[] = [
-  { label: 'Total Conversations Handled', value: '1,284,912', icon: 'camera' },
-  { label: 'Active Users This Week', value: '12,480', icon: 'users', trend: '+8% this week' },
-  { label: 'Avg. Diagnosis Response Time', value: '12.4 sec', icon: 'clock' },
-  { label: 'Uptime', value: '99.6%', icon: 'signal', badge: 'All systems operational' },
-];
-
 const FEATURES = [
-  { id: 'photo', icon: '📸', title: 'Photo Diagnosis', description: 'Snap a leaf — get instant AI-powered crop disease detection.', tag: 'Live' as const },
-  { id: 'voice', icon: '🎙', title: 'Voice Query', description: 'Speak in Hindi or Hinglish — bot replies in your language.', tag: 'Live' as const },
-  { id: 'weather', icon: '🌧', title: 'Weather & Mandi Alerts', description: 'Proactive rain, frost, and market price alerts for your district.', tag: 'Live' as const },
+  { id: 'photo', icon: 'camera', title: 'Photo Diagnosis', description: 'Snap a leaf — get instant AI-powered crop disease detection.', tag: 'Live' as const },
+  { id: 'voice', icon: 'mic', title: 'Voice Query', description: 'Speak in Hindi or Hinglish — bot replies in your language.', tag: 'Live' as const },
+  { id: 'weather', icon: 'cloud-rain', title: 'Weather & Mandi Alerts', description: 'Proactive rain, frost, and market price alerts for your district.', tag: 'Live' as const },
 ];
 
 /** Shown until /api/channels responds (or if backend is down). */
@@ -67,16 +60,21 @@ const FALLBACK_CHANNELS: ChannelData[] = [
 ];
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <motion.p
-    className="text-xs font-bold text-emerald-400/65 uppercase tracking-widest mb-3"
-    style={{ fontFamily: 'Sora, sans-serif' }}
-    initial={{ opacity: 0, y: 12 }}
-    whileInView={{ opacity: 1, y: 0 }}
+  <motion.div
+    className="inline-flex items-center gap-2 mb-3"
+    initial={{ opacity: 0, x: -14 }}
+    whileInView={{ opacity: 1, x: 0 }}
     viewport={{ once: true, amount: 0.5 }}
-    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
   >
-    {children}
-  </motion.p>
+    <span className="w-1.5 h-1.5 rounded-full bg-krish-ochre animate-ping" />
+    <p
+      className="text-xs font-bold text-krish-ochre/85 uppercase tracking-widest"
+      style={{ fontFamily: 'var(--font-heading)' }}
+    >
+      {children}
+    </p>
+  </motion.div>
 );
 
 function App() {
@@ -87,6 +85,9 @@ function App() {
       return false;
     }
   });
+  const [sceneReady, setSceneReady] = useState(false);
+  /** Timestamp (ms) captured at first render — used to enforce the 800ms minimum floor. */
+  const splashStartRef = useRef<number>(Date.now());
   const [channels, setChannels] = useState<ChannelData[]>(FALLBACK_CHANNELS);
 
   useEffect(() => {
@@ -111,6 +112,26 @@ function App() {
     };
   }, []);
 
+  /**
+   * Called by GrassScene after its first GPU frame renders.
+   * Respects an 800ms minimum display floor so fast loads don't flash.
+   */
+  const handleSceneReady = useCallback(() => {
+    const elapsed = Date.now() - splashStartRef.current;
+    const remaining = Math.max(0, 1500 - elapsed);
+    setTimeout(() => setSceneReady(true), remaining);
+  }, []);
+
+  /**
+   * Hard-fallback: force sceneReady=true after 5500ms in case WebGL fails
+   * (shader compile error, context lost, etc.) so the splash always exits.
+   */
+  useEffect(() => {
+    if (splashDone) return; // skip if splash already bypassed via sessionStorage
+    const fallback = setTimeout(() => setSceneReady(true), 5500);
+    return () => clearTimeout(fallback);
+  }, [splashDone]);
+
   const handleSplashDone = () => {
     try {
       sessionStorage.setItem('krish_splash_done', '1');
@@ -119,46 +140,61 @@ function App() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#0A0E0A] text-gray-300 overflow-x-hidden">
-      <GrassScene />
+    <div className="relative min-h-screen bg-[#0A0E0A] text-gray-300 overflow-x-hidden selection:bg-krish-ochre/30 selection:text-krish-wheat">
+      <CustomCursor />
+      <GrainOverlay />
 
-      <div
-        className="fixed inset-0 z-[1] pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.32) 45%, rgba(0,0,0,0.50) 100%)',
-        }}
-      />
+      {/* Dedicated Viewport-Pinned Digital Dawn Sky Background */}
+      <div className="fixed inset-0 z-0 digital-dawn-bg pointer-events-none" />
+
+      {/* Three.js 3D Grass Scene — passes onReady only while splash is active */}
+      <GrassScene onReady={!splashDone ? handleSceneReady : undefined} />
 
       <div className="relative z-10">
-        {!splashDone && <SplashScreen onDone={handleSplashDone} />}
+        {!splashDone && <SplashScreen onDone={handleSplashDone} sceneReady={sceneReady} />}
 
         <Hero channels={channels} splashDone={splashDone} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-px bg-white/6" />
+          <motion.div
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="h-px bg-gradient-to-r from-transparent via-krish-clay/40 to-transparent origin-center"
+          />
         </div>
 
-        <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
-          <div>
+        <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20">
+          <motion.section
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
             <SectionLabel>The Problem We Solve</SectionLabel>
             <WhyKrish />
-          </div>
+          </motion.section>
 
-          <div>
-            <SectionLabel>System Metrics</SectionLabel>
-            <StatStrip cards={STATS} />
-          </div>
-
-          <div>
+          <motion.section
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
             <SectionLabel>Feature Demos</SectionLabel>
             <FeatureCards cards={FEATURES} />
-          </div>
+          </motion.section>
 
-          <div>
+          <motion.section
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
             <SectionLabel>System Architecture</SectionLabel>
             <SystemArchitecture />
-          </div>
+          </motion.section>
         </main>
 
         <Footer />

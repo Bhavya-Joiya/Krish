@@ -117,9 +117,9 @@ void main() {
 const fragmentShader = /* glsl */`
 precision highp float;
 
-uniform vec3  uBaseColor;   /* very dark forest root             */
-uniform vec3  uMidColor;    /* mid forest green                  */
-uniform vec3  uTipColor;    /* lighter emerald tip               */
+uniform vec3  uBaseColor;   /* dark root shadow                  */
+uniform vec3  uMidColor;    /* visible mid-green                 */
+uniform vec3  uTipColor;    /* vibrant emerald tip               */
 uniform vec3  uFogColor;
 uniform float uFogDensity;
 uniform float uTime;
@@ -169,31 +169,38 @@ void main() {
 `;
 
 // ─── Component ─────────────────────────────────────────────────────────────
-export const GrassScene: React.FC = () => {
+interface GrassSceneProps {
+  /** Called once after the first successful renderer.render() frame. */
+  onReady?: () => void;
+}
+
+export const GrassScene: React.FC<GrassSceneProps> = ({ onReady }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // One-shot ready signal — fires on the very first rendered frame
+    let hasSignalled = false;
+
     const prefersReduced =
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const isMobile = window.innerWidth < 768;
 
-    // ── Renderer ──────────────────────────────────────────────────────
+    // ── Renderer — alpha: true allows Digital Dawn CSS gradient behind ──
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: !isMobile,
-      alpha: false,
+      alpha: true,
       powerPreference: 'high-performance',
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    // ── Scene ─────────────────────────────────────────────────────────
+    // ── Scene (Transparent background to let CSS dawn gradient show) ────
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x070D07);
     scene.fog = new THREE.FogExp2(0x0A0E0A, 0.030);
 
     // ── Camera ────────────────────────────────────────────────────────
@@ -206,51 +213,28 @@ export const GrassScene: React.FC = () => {
     camera.position.set(0, 3.0, 9.5);
     camera.lookAt(0, 0.3, 0);
 
-    // ── Lighting ──────────────────────────────────────────────────────
-    // Ambient — dark forest-green tint, keeps scene from being pure black
-    scene.add(new THREE.AmbientLight(0x0D2010, 3.5));
+    // ── Lighting (Preserving original green-black & cool moonlight palette) ──
+    const ambientLight = new THREE.AmbientLight(0x0D2010, 3.5);
+    scene.add(ambientLight);
 
-    // Moonlight — cool silver from upper left, primary light source
     const moon = new THREE.DirectionalLight(0xC5EDD0, 1.1);
     moon.position.set(-5, 12, 4);
     scene.add(moon);
 
-    // Warm horizon backlight (amber) — hits grass tips from behind
     const horizon = new THREE.DirectionalLight(0xF5B94D, 0.55);
     horizon.position.set(1.5, 0.8, 14);
     scene.add(horizon);
 
-    // Hemisphere — deep sky-teal top / near-black ground bottom
-    scene.add(new THREE.HemisphereLight(0x0E3020, 0x040905, 1.2));
+    const hemiLight = new THREE.HemisphereLight(0x0E3020, 0x040905, 1.2);
+    scene.add(hemiLight);
 
-    // ── Ground plane ──────────────────────────────────────────────────
+    // ── Ground plane (Original green-black dark tone) ───────────────────
     const groundGeo = new THREE.PlaneGeometry(90, 60);
     const groundMat = new THREE.MeshLambertMaterial({ color: 0x040C05 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.05;
     scene.add(ground);
-
-    // ── Sky backdrop ──────────────────────────────────────────────────
-    // A large quad far behind — gives the impression of a deep sky gradient.
-    const skyColors = [
-      new THREE.Color(0x060D07),
-      new THREE.Color(0x0A1A0C),
-      new THREE.Color(0x122016),
-    ];
-    const skyGeo = new THREE.PlaneGeometry(200, 100, 1, 2);
-    const skyColorArr: number[] = [];
-    const skyVerts = skyGeo.attributes.position.count;
-    for (let i = 0; i < skyVerts; i++) {
-      const t = (skyGeo.attributes.position.getY(i) + 50) / 100;
-      const c = new THREE.Color().lerpColors(skyColors[0], skyColors[2], t);
-      skyColorArr.push(c.r, c.g, c.b);
-    }
-    skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyColorArr, 3));
-    const skyMat = new THREE.MeshBasicMaterial({ vertexColors: true });
-    const sky = new THREE.Mesh(skyGeo, skyMat);
-    sky.position.set(0, 12, -48);
-    scene.add(sky);
 
     // ── Horizon amber glow sprite ─────────────────────────────────────
     const glowGeo = new THREE.PlaneGeometry(80, 20);
@@ -304,12 +288,9 @@ export const GrassScene: React.FC = () => {
     const windOffsets = new Float32Array(COUNT);
 
     for (let i = 0; i < COUNT; i++) {
-      // Rectangular field distribution with slight density falloff at edges
       let x: number, z: number;
-      // Slightly cluster toward center
       x = (Math.random() - 0.5) * 44;
       z = (Math.random() - 0.5) * 22;
-      // Thin out very far edges
       if (Math.abs(x) > 18 && Math.random() < 0.4) { x *= 0.6; }
       if (Math.abs(z) > 8  && Math.random() < 0.4) { z *= 0.6; }
 
@@ -334,17 +315,17 @@ export const GrassScene: React.FC = () => {
     const grassMesh = new THREE.Mesh(instancedGeo, mat);
     scene.add(grassMesh);
 
-    // ── Firefly particles ─────────────────────────────────────────────
+    // ── Firefly particles (Full intentional density 80/30, strictly inside grass canopy) ──
     const FF = isMobile ? 30 : 80;
     const ffPos = new Float32Array(FF * 3);
     const ffVel = new Float32Array(FF * 3);
 
     for (let i = 0; i < FF; i++) {
-      ffPos[i*3]     = (Math.random() - 0.5) * 30;
-      ffPos[i*3 + 1] = 0.4 + Math.random() * 3.2;
-      ffPos[i*3 + 2] = (Math.random() - 0.5) * 12;
-      ffVel[i*3]     = (Math.random() - 0.5) * 0.003;
-      ffVel[i*3 + 1] = 0.0008 + Math.random() * 0.0025;
+      ffPos[i*3]     = (Math.random() - 0.5) * 32;
+      ffPos[i*3 + 1] = -0.05 + Math.random() * 0.70;  /* strictly in lower grass canopy */
+      ffPos[i*3 + 2] = -4 + (Math.random() - 0.5) * 10;
+      ffVel[i*3]     = (Math.random() - 0.5) * 0.0025;
+      ffVel[i*3 + 1] = 0.0003 + Math.random() * 0.0012;
       ffVel[i*3 + 2] = (Math.random() - 0.5) * 0.002;
     }
 
@@ -353,9 +334,9 @@ export const GrassScene: React.FC = () => {
 
     const ffMat = new THREE.PointsMaterial({
       color:       0xF5B94D,
-      size:        isMobile ? 0.055 : 0.075,
+      size:        isMobile ? 0.050 : 0.065,
       transparent: true,
-      opacity:     0.70,
+      opacity:     0.65,
       blending:    THREE.AdditiveBlending,
       depthWrite:  false,
     });
@@ -363,19 +344,19 @@ export const GrassScene: React.FC = () => {
     const fireflies = new THREE.Points(ffGeo, ffMat);
     scene.add(fireflies);
 
-    // ── Stars (static Points far back) ────────────────────────────────
-    const starCount = 200;
+    // ── Stars (Confined strictly to high upper sky, well above horizon and text) ──
+    const starCount = 160;
     const starPos   = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
-      starPos[i*3]     = (Math.random() - 0.5) * 120;
-      starPos[i*3 + 1] = 5 + Math.random() * 35;
-      starPos[i*3 + 2] = -20 - Math.random() * 55;
+      starPos[i*3]     = (Math.random() - 0.5) * 110;
+      starPos[i*3 + 1] = 16 + Math.random() * 32;   /* high upper sky only */
+      starPos[i*3 + 2] = -40 - Math.random() * 45;  /* deep background */
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     const starMat = new THREE.PointsMaterial({
       color:       0xC8EED8,
-      size:        0.12,
+      size:        0.11,
       transparent: true,
       opacity:     0.45,
       blending:    THREE.AdditiveBlending,
@@ -387,16 +368,15 @@ export const GrassScene: React.FC = () => {
     let st: ScrollTrigger | null = null;
     if (!prefersReduced) {
       st = ScrollTrigger.create({
-        trigger: document.documentElement,
+        trigger: '#hero-grass-trigger',
         start:   'top top',
-        end:     'bottom bottom',
+        end:     'bottom top',
         scrub:   1.5,
         onUpdate: (self) => {
           const p = self.progress;
 
-          // Wind grows with scroll — creates "gust as you scroll" feeling
           gsap.to(uniforms.uWindStrength, {
-            value: 0.25 + p * 0.60,
+            value: 0.25 + p * 0.15,
             duration: 0.7,
             overwrite: true,
           });
@@ -407,23 +387,26 @@ export const GrassScene: React.FC = () => {
             overwrite: true,
           });
 
-          // Camera drifts slightly right + lowers + pushes forward
           gsap.to(camera.position, {
-            x:        p * 2.2,
-            y:        3.0 - p * 0.65,
-            z:        9.5 + p * 1.2,
+            x:        p * 0.6,
+            y:        3.0 - p * 0.20,
+            z:        9.5 + p * 0.3,
             duration: 1.1,
             overwrite: true,
-            onUpdate: () => camera.lookAt(p * 1.1, 0.3 - p * 0.15, 0),
+            onUpdate: () => camera.lookAt(p * 0.5, 0.3 - p * 0.05, 0),
           });
 
-          // Horizon amber glow intensifies mid-scroll
           glowMat.opacity = 0.06 + Math.sin(p * Math.PI) * 0.08;
         },
       });
+
+      // Safety net: if fonts or the splash animation shift Hero's layout
+      // after ScrollTrigger initialises, refresh so end position is accurate.
+      const onLoad = () => ScrollTrigger.refresh();
+      window.addEventListener('load', onLoad, { once: true });
     }
 
-    // ── GSAP intro camera push-in (on first load) ─────────────────────
+    // ── GSAP intro camera push-in ─────────────────────────────────────
     if (!prefersReduced) {
       gsap.from(camera.position, {
         z:        16,
@@ -449,24 +432,32 @@ export const GrassScene: React.FC = () => {
       uniforms.uTime.value = t;
 
       if (!prefersReduced) {
-        // Animate fireflies — slow drift + sine wobble
+        // Animate fireflies inside grass canopy
         const pos = ffGeo.attributes.position.array as Float32Array;
         for (let i = 0; i < FF; i++) {
-          pos[i*3]     += ffVel[i*3]     + Math.sin(t * 0.4 + i * 0.85) * 0.0008;
-          pos[i*3 + 1] += ffVel[i*3 + 1] + Math.sin(t * 0.3 + i * 1.20) * 0.0006;
+          pos[i*3]     += ffVel[i*3]     + Math.sin(t * 0.4 + i * 0.85) * 0.0006;
+          pos[i*3 + 1] += ffVel[i*3 + 1] + Math.sin(t * 0.3 + i * 1.20) * 0.0004;
           pos[i*3 + 2] += ffVel[i*3 + 2];
-          // Wrap within bounds
-          if (pos[i*3 + 1] > 4.2)         pos[i*3 + 1] = 0.3;
+          // Wrap strictly inside grass canopy
+          if (pos[i*3 + 1] > 0.75)         pos[i*3 + 1] = -0.05;
+          if (pos[i*3 + 1] < -0.10)        pos[i*3 + 1] = 0.70;
           if (Math.abs(pos[i*3])     > 16) pos[i*3]     *= -0.92;
-          if (Math.abs(pos[i*3 + 2]) > 7)  pos[i*3 + 2] *= -0.92;
+          if (Math.abs(pos[i*3 + 2]) > 8)  pos[i*3 + 2] *= -0.92;
         }
         (ffGeo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
 
-        // Firefly opacity breathe
-        ffMat.opacity = 0.50 + Math.sin(t * 1.1) * 0.22;
+        ffMat.opacity = 0.55 + Math.sin(t * 1.1) * 0.20;
+
+        // Subtle slow organic star twinkle
+        starMat.opacity = 0.38 + Math.sin(t * 0.9) * 0.14;
       }
 
       renderer.render(scene, camera);
+      // Signal readiness on the very first successful GPU frame
+      if (!hasSignalled) {
+        hasSignalled = true;
+        onReady?.();
+      }
     };
     tick();
 
@@ -489,10 +480,12 @@ export const GrassScene: React.FC = () => {
       bladeBase.dispose();
       groundGeo.dispose();
       groundMat.dispose();
+      ambientLight.dispose();
+      moon.dispose();
+      horizon.dispose();
+      hemiLight.dispose();
       ffGeo.dispose();
       ffMat.dispose();
-      skyGeo.dispose();
-      skyMat.dispose();
       glowGeo.dispose();
       glowMat.dispose();
       starGeo.dispose();
@@ -503,7 +496,7 @@ export const GrassScene: React.FC = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-0 w-full h-full pointer-events-none"
+      className="fixed inset-0 z-[1] w-full h-full pointer-events-none"
       aria-hidden="true"
     />
   );
