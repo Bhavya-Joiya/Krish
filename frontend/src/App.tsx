@@ -11,7 +11,7 @@ import { GrainOverlay } from './components/GrainOverlay';
 import { Footer } from './components/Footer';
 import { GrassScene } from './components/GrassScene';
 import type { ChannelData } from './types';
-import { apiUrl, resolveHref } from './api';
+import { resolveHref } from './api';
 
 const FEATURES = [
   { id: 'photo', icon: 'camera', title: 'Photo Diagnosis', description: 'Snap a leaf — get instant AI-powered crop disease detection.', tag: 'Live' as const },
@@ -19,31 +19,31 @@ const FEATURES = [
   { id: 'weather', icon: 'cloud-rain', title: 'Weather & Mandi Alerts', description: 'Proactive rain, frost, and market price alerts for your district.', tag: 'Live' as const },
 ];
 
-/** Shown until /api/channels responds (or if backend is down). */
-const FALLBACK_CHANNELS: ChannelData[] = [
+/** Landing channel cards — always shown as live; buttons open the apps / chat UI. */
+const DEMO_CHANNELS: ChannelData[] = [
   {
     id: 'telegram',
     name: 'Telegram Bot',
     icon: 'telegram',
-    status: 'offline',
-    meta1: 'Photo · voice · text · weather · mandi',
-    meta2: 'Start the API to resolve your bot link',
-    href: null,
-    actionLabel: 'Bot offline',
-    disabled: true,
-    note: 'Backend not reachable. Run uvicorn on port 8000, then refresh.',
+    status: 'connected',
+    meta1: 'Photo · voice · text · weather · mandi · @assist_64564bot',
+    meta2: 'Primary channel — open the bot in Telegram',
+    href: 'https://t.me/assist_64564bot',
+    actionLabel: 'Open Telegram',
+    disabled: false,
+    note: 'Opens Telegram and starts a chat with Krish.',
   },
   {
     id: 'whatsapp',
     name: 'WhatsApp · Kisan Mitra',
     icon: 'whatsapp',
-    status: 'offline',
-    meta1: 'Text · mandi bhav · kheti salah',
-    meta2: 'Start the API to resolve the WhatsApp link',
-    href: null,
-    actionLabel: 'Bot offline',
-    disabled: true,
-    note: 'Backend not reachable. Run uvicorn on port 8000, then refresh.',
+    status: 'connected',
+    meta1: 'Text · mandi bhav · kheti salah — Hindi / Hinglish',
+    meta2: 'WhatsApp bot for farmers',
+    href: 'https://web.whatsapp.com/',
+    actionLabel: 'Open WhatsApp',
+    disabled: false,
+    note: 'Opens WhatsApp — message Kisan Mitra for farm advice.',
   },
   {
     id: 'fallback',
@@ -51,11 +51,11 @@ const FALLBACK_CHANNELS: ChannelData[] = [
     icon: 'fallback',
     status: 'connected',
     meta1: 'Text + image URL + location — same AI pipeline',
-    meta2: 'Voice available via Telegram only',
+    meta2: 'Voice notes are Telegram-only',
     href: resolveHref('/chat'),
     actionLabel: 'Open Web Chat',
     disabled: false,
-    note: 'Opens the FastAPI /chat backup (same origin, or Render when on Vercel).',
+    note: 'Opens the in-browser chat UI.',
   },
 ];
 
@@ -88,29 +88,7 @@ function App() {
   const [sceneReady, setSceneReady] = useState(false);
   /** Timestamp (ms) captured at first render — used to enforce the 800ms minimum floor. */
   const splashStartRef = useRef<number>(Date.now());
-  const [channels, setChannels] = useState<ChannelData[]>(FALLBACK_CHANNELS);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(apiUrl('/api/channels'));
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled || !Array.isArray(data.channels)) return;
-        const next = (data.channels as ChannelData[]).map((ch) => ({
-          ...ch,
-          href: resolveHref(ch.href) ?? ch.href,
-        }));
-        setChannels(next);
-      } catch {
-        // keep FALLBACK_CHANNELS
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [channels] = useState<ChannelData[]>(DEMO_CHANNELS);
 
   /**
    * Called by GrassScene after its first GPU frame renders.

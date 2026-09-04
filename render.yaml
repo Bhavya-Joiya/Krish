@@ -26,5 +26,4 @@ services:
       # GEMINI_API_KEY, GROQ_API_KEY, OPENWEATHER_API_KEY
       # DATA_GOV_IN_API_KEY
       # DATA_GOV_IN_RESOURCE_ID (default 9ef84268-d588-465a-a308-a864a43d0070)
-      # GREEN_API_HOST_URL, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN
-      # GREEN_API_WHATSAPP_NUMBER (optional wa.me digits)
+      # WHATSAPP_DISPLAY_NUMBER (optional wa.me digits for landing card)
